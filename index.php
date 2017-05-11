@@ -34,7 +34,7 @@
     <a class="navbar-brand" href="#">Toolbar</a>
     <div class="collapse navbar-collapse" id="toolbarButtons">
         <form class="navbar-nav btn-group">
-            <button class="btn btn-secondary" type="button">Beautify code</button>
+            <button class="btn btn-secondary" type="button" id="buttonBeautify">Beautify code</button>
             <button class="btn btn-secondary" type="button">Remove MINUS</button>
             <button class="btn btn-secondary" type="button">Expand/Compact URI</button>
             <button class="btn btn-secondary" type="button">Remove Singleton</button>
@@ -53,7 +53,7 @@
                 <button type="button" class="btn btn-secondary">< Prev</button>
                 <button type="button" class="btn btn-secondary">Redo ></button>
             </div>
-            <div id="yasqe"></div>
+            <textarea id="yasqe"></textarea>
         </div>
         <!-- SIDEBAR -->
         <div class="col-sm-12 col-md-3 sidebar-wrapper">
