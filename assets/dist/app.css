@@ -1,0 +1,38 @@
+.CodeMirror {
+    height: 40em !important;
+}
+
+button {
+    cursor: pointer;
+}
+
+.toolbar {
+    background-color: #2980b9;
+}
+
+.sparql-editor-wrapper {
+    margin-bottom: 1em;
+}
+
+.sidebar-wrapper {
+    margin-bottom: 1em;
+}
+
+.query-buttons {
+    float: right;
+}
+
+.query-history-list {
+    height: 15em;
+    margin-top: 0.5em;
+    overflow-x: hidden;
+    overflow-y: scroll;
+    border-bottom: 1px solid rgba(0,0,0,.125);
+}
+.query-history-list .list-group-item {
+    border-radius: 0;
+    flex-shrink: 0;
+}
+.query-history-list .list-group-item:last-child {
+    border-bottom: 0;
+}
