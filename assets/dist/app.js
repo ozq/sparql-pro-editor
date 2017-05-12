@@ -13,8 +13,16 @@ function deleteIndents()
     YASQE.commands['selectAll'](editor);
     editor.indentSelection('prev');
 }
+
 function getStringWithIndents(indentDepth, string) {
     return new Array(indentDepth * editor.options.indentUnit).join(' ') + string;
+}
+
+function removeAllOperatorsByName(name) {
+    //TODO: consider nested brackets!!!
+    var regexp = new RegExp(name + '\\s*{[^}]*}', 'ig');
+    var newContent = editor.getValue().replace(regexp, '');
+    editor.setValue(newContent);
 }
 
 $('#buttonBeautify').click(function() {
@@ -39,4 +47,8 @@ $('#buttonBeautify').click(function() {
     }
 
     editor.setValue(formattedContent.join('\r\n'));
+});
+
+$('#buttonRemoveMinus').click(function() {
+    removeAllOperatorsByName('minus');
 });

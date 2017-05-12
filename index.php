@@ -35,7 +35,7 @@
     <div class="collapse navbar-collapse" id="toolbarButtons">
         <form class="navbar-nav btn-group">
             <button class="btn btn-secondary" type="button" id="buttonBeautify">Beautify code</button>
-            <button class="btn btn-secondary" type="button">Remove MINUS</button>
+            <button class="btn btn-secondary" type="button" id="buttonRemoveMinus">Remove MINUS</button>
             <button class="btn btn-secondary" type="button">Expand/Compact URI</button>
             <button class="btn btn-secondary" type="button">Remove Singleton</button>
             <button class="btn btn-secondary" type="button">Add SingletonProperty</button>
