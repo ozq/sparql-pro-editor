@@ -19,10 +19,42 @@ function getStringWithIndents(indentDepth, string) {
 }
 
 function removeAllOperatorsByName(name) {
-    //TODO: consider nested brackets!!!
-    var regexp = new RegExp(name + '\\s*{[^}]*}', 'ig');
-    var newContent = editor.getValue().replace(regexp, '');
-    editor.setValue(newContent);
+    var operatorStartIndex = 0;
+    var processContent = editor.getValue();
+    var operatorRegexp = new RegExp(name + '\\s*{', 'i');
+
+    do {
+        // Find operator start index
+        operatorStartIndex = processContent.search(operatorRegexp);
+        if (operatorStartIndex >= 0) {
+            var matchedBracket;
+            var bracketsCounter = 0;
+            var bracketsRegexp = new RegExp('[{}]', 'g');
+            bracketsRegexp.lastIndex = operatorStartIndex;
+
+            // Find operator last bracket index
+            while (matchedBracket = bracketsRegexp.exec(processContent)) {
+                bracketsRegexp.lastIndex = matchedBracket.index + 1;
+                matchedBracket[0] === '{' ? bracketsCounter++ : false;
+                matchedBracket[0] === '}' ? bracketsCounter-- : false;
+                if (bracketsCounter === 0) {
+                    // Replace all content from operator start index to operator last bracket index
+                    var operatorContent = processContent.substring(operatorStartIndex, bracketsRegexp.lastIndex);
+                    processContent = processContent.replace(operatorContent, '');
+                    break;
+                }
+            }
+
+            // Handle brackets nesting error
+            if (bracketsCounter > 0) {
+                console.log('SPARQL syntax error, check brackets nesting.');
+                break;
+            }
+        }
+    } while (operatorStartIndex >= 0);
+
+    // Update editor content
+    editor.setValue(processContent);
 }
 
 $('#buttonBeautify').click(function() {
