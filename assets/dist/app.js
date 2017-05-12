@@ -8,6 +8,8 @@ var editor = YASQE.fromTextArea(
 );
 
 /** Toolbar buttons **/
+//TODO: вынести всю логику работы с кнопками в отдельное место [!]
+//TODO: создать специальный класс/хэлпер для работы с yasqe-редактором
 function deleteIndents()
 {
     YASQE.commands['selectAll'](editor);
@@ -16,6 +18,14 @@ function deleteIndents()
 
 function getStringWithIndents(indentDepth, string) {
     return new Array(indentDepth * editor.options.indentUnit).join(' ') + string;
+}
+
+function getQueryPrefixes() {
+    return editor.getPrefixesFromQuery();
+}
+
+function getAllPrefixes() {
+    return Object.assign({}, getCommonPrefixesArray(), getQueryPrefixes());
 }
 
 function removeAllOperatorsByName(name) {
@@ -83,4 +93,62 @@ $('#buttonBeautify').click(function() {
 
 $('#buttonRemoveMinus').click(function() {
     removeAllOperatorsByName('minus');
+});
+
+$('#buttonExpandCompact').click(function() {
+    var allPrefixes = getAllPrefixes();
+    console.log(allPrefixes);
+    //TODO: доделать метод [!]
+});
+
+/** Common prefixes logic **/
+//TODO: вынести всю логику работы с common prefix в отдельное место [!]
+//TODO: валидация вводимых префиксов
+//TODO: абстрагироваться от localStorage
+
+function getCommonPrefixesContent()
+{
+    return JSON.parse(localStorage.getItem('commonPrefixes'));
+}
+
+function getCommonPrefixesArray() {
+    var commonPrefixesContent = getCommonPrefixesContent();
+    var commonPrefixesArray = [];
+
+    if (commonPrefixesContent) {
+        commonPrefixesContent.forEach(function(item, i) {
+            var prefixData = item.replace(new RegExp('PREFIX\\s*', 'i'), '');
+            var matchedPrefixData = prefixData.match(new RegExp('(\\w+):(<.+>)'));
+            if (matchedPrefixData) {
+                commonPrefixesArray[matchedPrefixData[1]] = matchedPrefixData[2];
+            }
+        });
+    }
+
+    return commonPrefixesArray;
+}
+
+function getCommonPrefixesTextArea() {
+    return document.getElementsByClassName('common-prefixes-textarea')[0];
+}
+
+function setCommonPrefixesData(data) {
+    localStorage.setItem('commonPrefixes', JSON.stringify(data));
+}
+
+function initCommonPrefixesData() {
+    var data = getCommonPrefixesContent();
+    if (data) {
+        getCommonPrefixesTextArea().value = data.join('\n');
+    }
+}
+
+initCommonPrefixesData();
+
+$('#buttonClearCommonPrefixes').click(function() {
+    getCommonPrefixesTextArea().value = '';
+    setCommonPrefixesData('');
+});
+$('#buttonSaveCommonPrefixes').click(function() {
+    setCommonPrefixesData(getCommonPrefixesTextArea().value.split('\n'));
 });

@@ -36,7 +36,7 @@
         <form class="navbar-nav btn-group">
             <button class="btn btn-secondary" type="button" id="buttonBeautify">Beautify code</button>
             <button class="btn btn-secondary" type="button" id="buttonRemoveMinus">Remove MINUS</button>
-            <button class="btn btn-secondary" type="button">Expand/Compact URI</button>
+            <button class="btn btn-secondary" type="button" id="buttonExpandCompact">Expand/Compact URI</button>
             <button class="btn btn-secondary" type="button">Remove Singleton</button>
             <button class="btn btn-secondary" type="button">Add SingletonProperty</button>
         </form>
@@ -58,21 +58,34 @@
         <!-- SIDEBAR -->
         <div class="col-sm-12 col-md-3 sidebar-wrapper">
             <!-- HISTORY -->
-            <div class="query-history">
-                <label>History</label>
-                <div class="btn-group-sm" role="group">
+            <div class="sidebar-item">
+                <label class="sidebar-item_label">History</label>
+                <div class="btn-group-sm sidebar-item_buttons" role="group">
                     <button type="button" class="btn btn-primary">New</button>
                     <button type="button" class="btn btn-success">Save</button>
                     <button type="button" class="btn btn-danger">Delete</button>
                 </div>
-                <div class="list-group query-history-list">
-                    <a href="#" class="list-group-item active">(current untitled)</a>
-                    <a href="#" class="list-group-item list-group-item-action">Saved sparql 1</a>
-                    <a href="#" class="list-group-item list-group-item-action">Saved sparql 2</a>
-                    <a href="#" class="list-group-item list-group-item-action">Saved sparql 3</a>
-                    <a href="#" class="list-group-item list-group-item-action">Saved sparql 4</a>
-                    <a href="#" class="list-group-item list-group-item-action">Saved sparql 5</a>
-                    <a href="#" class="list-group-item list-group-item-action">Saved sparql 6</a>
+                <div class="sidebar-item_content">
+                    <div class="list-group query-history-list">
+                        <a href="#" class="list-group-item active">(current untitled)</a>
+                        <a href="#" class="list-group-item list-group-item-action">Saved sparql 1</a>
+                        <a href="#" class="list-group-item list-group-item-action">Saved sparql 2</a>
+                        <a href="#" class="list-group-item list-group-item-action">Saved sparql 3</a>
+                        <a href="#" class="list-group-item list-group-item-action">Saved sparql 4</a>
+                        <a href="#" class="list-group-item list-group-item-action">Saved sparql 5</a>
+                        <a href="#" class="list-group-item list-group-item-action">Saved sparql 6</a>
+                    </div>
+                </div>
+            </div>
+            <!-- COMMON PREFIXES -->
+            <div class="sidebar-item">
+                <label class="sidebar-item_label">Common prefixes</label>
+                <div class="btn-group-sm sidebar-item_buttons" role="group">
+                    <button type="button" class="btn btn-success" id="buttonSaveCommonPrefixes">Save</button>
+                    <button type="button" class="btn btn-danger" id="buttonClearCommonPrefixes">Clear</button>
+                </div>
+                <div class="sidebar-item_content">
+                    <textarea class="form-control common-prefixes-textarea" placeholder="PREFIX test:<http://www.test.com/rdf-schema#>"></textarea>
                 </div>
             </div>
         </div>

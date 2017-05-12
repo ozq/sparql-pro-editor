@@ -24,10 +24,10 @@ button {
 
 .query-history-list {
     height: 15em;
-    margin-top: 0.5em;
     overflow-x: hidden;
     overflow-y: scroll;
     border-bottom: 1px solid rgba(0,0,0,.125);
+    border-top: 1px solid rgba(0,0,0,.125);
 }
 .query-history-list .list-group-item {
     border-radius: 0;
@@ -35,4 +35,19 @@ button {
 }
 .query-history-list .list-group-item:last-child {
     border-bottom: 0;
+}
+
+.common-prefixes {
+    margin-top: 1.5em;
+}
+
+.sidebar-item {
+    margin-bottom: 1.5em;
+}
+.sidebar-item_buttons {
+    margin-bottom: 0.5em;
+}
+.common-prefixes-textarea {
+    height: 10em;
+    font-size: 0.8rem;
 }
