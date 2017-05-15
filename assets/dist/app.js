@@ -278,6 +278,12 @@ function selectQueryHistoryItem(id) {
     }
 }
 
+function saveCurrentQuery() {
+    var selectedItem = queryHistory.get(queryHistory.getSelectedId());
+    selectedItem.content = editor.getValue();
+    queryHistory.put(selectedItem);
+}
+
 buildHistoryMenu();
 
 $('.query-history-list').on('click', '.list-group-item', function() {
@@ -307,9 +313,12 @@ $('#buttonDeleteQueryHistory').click(function() {
 });
 
 $('#buttonSaveQueryHistory').click(function() {
-    var selectedItem = queryHistory.get(queryHistory.getSelectedId());
-    selectedItem.content = editor.getValue();
-    queryHistory.put(selectedItem);
+    saveCurrentQuery();
+});
+$(document).on('keydown', function(e){
+    if (e.ctrlKey && e.which === 83){
+        saveCurrentQuery();
+    }
 });
 
 $('.query-history-list').on('click', '.renameHistoryQuery', function() {
