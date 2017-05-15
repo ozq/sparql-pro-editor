@@ -286,7 +286,7 @@ $('.query-history-list').on('click', '.list-group-item', function() {
 
 $('#buttonAddQueryHistory').click(function() {
     var item = queryHistory.add('');
-    $('.query-history-list').prepend(buildHistoryItem(item.id, item.name));
+    $('.query-history-list').append(buildHistoryItem(item.id, item.name));
     selectQueryHistoryItem(item.id);
     editor.setValue('');
 });
