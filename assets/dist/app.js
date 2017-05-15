@@ -9,7 +9,7 @@ var editor = YASQE.fromTextArea(
 
 /** Toolbar buttons **/
 //TODO: вынести всю логику работы с кнопками в отдельное место [!]
-//TODO: создать специальный класс/хэлпер для работы с yasqe-редактором
+//TODO: создать специальный класс/хэлпер для форматирования sparql-кода (SparqlFormatter)
 function deleteIndents()
 {
     YASQE.commands['selectAll'](editor);
@@ -67,6 +67,30 @@ function removeAllOperatorsByName(name) {
     editor.setValue(processContent);
 }
 
+function expandUri(content, prefixes) {
+    Object.keys(prefixes).map(function(prefix) {
+        var url = prefixes[prefix];
+        var replacedContent = content.replace(new RegExp(prefix + ':(\\w+)', 'gi'), function(match, property) {
+            return '<' + url + property + '>';
+        });
+        replacedContent ? content = replacedContent : false;
+    });
+
+    return content;
+}
+
+function compactUri(content, prefixes) {
+    Object.keys(prefixes).map(function(prefix) {
+        var url = prefixes[prefix];
+        var replacedContent = content.replace(new RegExp('\<' + url + '(\\w+)\>', 'gi'), function(match, property) {
+            return prefix + '\:' + property;
+        });
+        replacedContent ? content = replacedContent : false;
+    });
+
+    return content;
+}
+
 $('#buttonBeautify').click(function() {
     deleteIndents();
 
@@ -95,10 +119,14 @@ $('#buttonRemoveMinus').click(function() {
     removeAllOperatorsByName('minus');
 });
 
-$('#buttonExpandCompact').click(function() {
-    var allPrefixes = getAllPrefixes();
-    console.log(allPrefixes);
-    //TODO: доделать метод [!]
+$('#buttonExpand').click(function() {
+    var replacedContent = expandUri(editor.getValue(), getAllPrefixes());
+    editor.setValue(replacedContent);
+});
+
+$('#buttonCompact').click(function() {
+    var replacedContent = compactUri(editor.getValue(), getAllPrefixes());
+    editor.setValue(replacedContent);
 });
 
 /** Common prefixes logic **/
@@ -118,7 +146,7 @@ function getCommonPrefixesArray() {
     if (commonPrefixesContent) {
         commonPrefixesContent.forEach(function(item, i) {
             var prefixData = item.replace(new RegExp('PREFIX\\s*', 'i'), '');
-            var matchedPrefixData = prefixData.match(new RegExp('(\\w+):(<.+>)'));
+            var matchedPrefixData = prefixData.match(new RegExp('(\\w+):\<(.+)\>'));
             if (matchedPrefixData) {
                 commonPrefixesArray[matchedPrefixData[1]] = matchedPrefixData[2];
             }
