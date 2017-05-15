@@ -180,3 +180,147 @@ $('#buttonClearCommonPrefixes').click(function() {
 $('#buttonSaveCommonPrefixes').click(function() {
     setCommonPrefixesData(getCommonPrefixesTextArea().value.split('\n'));
 });
+
+
+/** >> Query History **/
+function QueryHistory() {
+    var storageKey = 'spe.queryHistory';
+
+    this.getAll = function () {
+        var items = JSON.parse(localStorage.getItem(storageKey));
+        return items ? items : [];
+    };
+
+    this.get = function (id) {
+        return this.getAll().filter(function(item){ return item.id == id })[0];
+    };
+
+    this.generateId = function () {
+        return new Date().getTime();
+    };
+
+    this.getIndexById = function (id) {
+        var ids = this.getAll().map(function(item){return item.id;});
+        return ids.indexOf(parseInt(id));
+    };
+
+    this.add = function(content, name) {
+        var newItem = {
+            'id': this.generateId(),
+            'name': name ? name : 'Saved sparql ' + parseInt(this.getAll().length + 1),
+            'content': content
+        };
+        var history = this.getAll();
+        history.push(newItem);
+        localStorage.setItem(storageKey, JSON.stringify(history));
+
+        return newItem;
+    };
+
+    this.put = function (item) {
+        var history = this.getAll();
+        history[this.getIndexById(item.id)] = item;
+        localStorage.setItem(storageKey, JSON.stringify(history));
+    };
+
+    this.delete = function (id) {
+        var index = this.getIndexById(id);
+        var history = this.getAll();
+        history.splice(index, 1);
+        localStorage.setItem(storageKey, JSON.stringify(history));
+    };
+
+    this.setSelectedId = function (id) {
+        localStorage.setItem(storageKey + '.selected', id);
+    };
+
+    this.getSelectedId = function () {
+        return localStorage.getItem(storageKey + '.selected');
+    };
+}
+
+var queryHistory = new QueryHistory();
+
+function buildHistoryItem(id, name) {
+    return "<a href='#' data-id='" + id + "' class='list-group-item'>" + "<span class='queryTitle'>" + name + "</span>" +
+        "<span class='glyphicon glyphicon-pencil renameHistoryQuery' aria-hidden='true'>Rename</span></a>" +
+        "<input type='text' class='form-control newQueryName' data-id='" + id + "' value='" + name + "' style='display: none;'>";
+}
+
+function buildHistoryMenu() {
+    var menuContent = '';
+    var queryHistoryWrapper = $('.query-history-list');
+
+    if (!queryHistory.getAll().length) {
+        queryHistory.add('', 'Saved sparql 1');
+    }
+    queryHistory.getAll().forEach(function(item) {
+        menuContent += buildHistoryItem(item.id, item.name);
+    });
+    queryHistoryWrapper.html(menuContent);
+
+    var selectedIndex = queryHistory.getSelectedId();
+    var selectedId = queryHistory.get(selectedIndex) ? selectedIndex : queryHistory.getAll()[0].id;
+    selectQueryHistoryItem(selectedId);
+}
+
+function selectQueryHistoryItem(id) {
+    var queryHistoryListElement = $('.query-history-list');
+    var query = queryHistory.get(id);
+
+    if (query) {
+        $('.query-history-list .list-group-item').removeClass('active');
+        queryHistoryListElement.find(".list-group-item[data-id='" + id + "']").addClass('active');
+        editor.setValue(query.content);
+        queryHistory.setSelectedId(id);
+    }
+}
+
+buildHistoryMenu();
+
+$('.query-history-list').on('click', '.list-group-item', function() {
+    selectQueryHistoryItem($(this).data('id'));
+});
+
+$('#buttonAddQueryHistory').click(function() {
+    var item = queryHistory.add('');
+    $('.query-history-list').prepend(buildHistoryItem(item.id, item.name));
+    selectQueryHistoryItem(item.id);
+    editor.setValue('');
+});
+
+$('#buttonDeleteQueryHistory').click(function() {
+    var selectedIndex = queryHistory.getSelectedId();
+    queryHistory.delete(selectedIndex);
+
+    var selectedItem = $('.query-history-list').find(".list-group-item[data-id='" + selectedIndex + "']");
+    selectedItem.remove();
+    editor.setValue('');
+
+    var selectingItem = $('.query-history-list').find(".list-group-item").first();
+    if (selectingItem) {
+        selectQueryHistoryItem(selectingItem.data('id'));
+    }
+});
+
+$('#buttonSaveQueryHistory').click(function() {
+    var selectedItem = queryHistory.get(queryHistory.getSelectedId());
+    selectedItem.content = editor.getValue();
+    queryHistory.put(selectedItem);
+});
+
+$('.query-history-list').on('click', '.renameHistoryQuery', function() {
+    var renameInput = $(this).parent().next('.newQueryName');
+    renameInput.slideToggle(100).focus();
+});
+
+$('.query-history-list').on('keypress', '.newQueryName', function(e) {
+    if (e.which == 13){
+        var item = queryHistory.get($(this).data('id'));
+        item.name = $(this).val();
+        queryHistory.put(item);
+        $(this).prev('.list-group-item').find('.queryTitle').text($(this).val());
+        $(this).slideToggle(100);
+    }
+});
+/** << Query History **/

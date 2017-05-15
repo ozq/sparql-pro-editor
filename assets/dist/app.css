@@ -26,8 +26,7 @@ button {
     height: 15em;
     overflow-x: hidden;
     overflow-y: scroll;
-    border-bottom: 1px solid rgba(0,0,0,.125);
-    border-top: 1px solid rgba(0,0,0,.125);
+    border: 1px solid rgba(0,0,0,.125);
 }
 .query-history-list .list-group-item {
     border-radius: 0;
@@ -50,4 +49,13 @@ button {
 .common-prefixes-textarea {
     height: 10em;
     font-size: 0.8rem;
+}
+
+.renameHistoryQuery {
+    position: absolute;
+    right: 1em;
+}
+
+.newQueryName {
+    margin-bottom: 5px;
 }
