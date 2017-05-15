@@ -243,8 +243,10 @@ var queryHistory = new QueryHistory();
 
 function buildHistoryItem(id, name) {
     return "<a href='#' data-id='" + id + "' class='list-group-item'>" + "<span class='queryTitle'>" + name + "</span>" +
-        "<span class='glyphicon glyphicon-pencil renameHistoryQuery' aria-hidden='true'>Rename</span></a>" +
-        "<input type='text' class='form-control newQueryName' data-id='" + id + "' value='" + name + "' style='display: none;'>";
+           "<span class='glyphicon glyphicon-pencil renameHistoryQuery' aria-hidden='true'>Rename</span></a>" +
+           "<div class='querySettings'>" +
+               "<input type='text' class='form-control newQueryName' data-id='" + id + "' value='" + name + "' style='display: none;'>" +
+           "</div>";
 }
 
 function buildHistoryMenu() {
@@ -294,6 +296,7 @@ $('#buttonDeleteQueryHistory').click(function() {
     queryHistory.delete(selectedIndex);
 
     var selectedItem = $('.query-history-list').find(".list-group-item[data-id='" + selectedIndex + "']");
+    selectedItem.next('.querySettings').remove();
     selectedItem.remove();
     editor.setValue('');
 
@@ -310,7 +313,7 @@ $('#buttonSaveQueryHistory').click(function() {
 });
 
 $('.query-history-list').on('click', '.renameHistoryQuery', function() {
-    var renameInput = $(this).parent().next('.newQueryName');
+    var renameInput = $(this).parent().next('.querySettings').find('.newQueryName');
     renameInput.slideToggle(100).focus();
 });
 
@@ -319,7 +322,7 @@ $('.query-history-list').on('keypress', '.newQueryName', function(e) {
         var item = queryHistory.get($(this).data('id'));
         item.name = $(this).val();
         queryHistory.put(item);
-        $(this).prev('.list-group-item').find('.queryTitle').text($(this).val());
+        $(this).parent().prev('.list-group-item').find('.queryTitle').text($(this).val());
         $(this).slideToggle(100);
     }
 });
