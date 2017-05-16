@@ -207,7 +207,7 @@ function QueryHistory() {
     this.add = function(content, name) {
         var newItem = {
             'id': this.generateId(),
-            'name': name ? name : 'Saved sparql ' + parseInt(this.getAll().length + 1),
+            'name': name ? name : 'New sparql ' + parseInt(this.getAll().length + 1),
             'content': content
         };
         var history = this.getAll();
@@ -240,10 +240,15 @@ function QueryHistory() {
 }
 
 var queryHistory = new QueryHistory();
+var queryHistoryListElement = $('.query-history-list');
 
-function buildHistoryItem(id, name) {
-    return "<a href='#' data-id='" + id + "' class='list-group-item'>" + "<span class='queryTitle'>" + name + "</span>" +
-           "<span class='glyphicon glyphicon-pencil renameHistoryQuery' aria-hidden='true'>Rename</span></a>" +
+function buildHistoryItem(id, name, isNew) {
+    var className = "list-group-item " + (isNew ? 'not-saved'  : '');
+
+    return "<a href='#' data-id='" + id + "' class='" + className + "'>" +
+               "<span class='queryTitle'>" + name + "</span>" +
+               "<span class='glyphicon glyphicon-pencil renameHistoryQuery' aria-hidden='true'>Rename</span>" +
+           "</a>" +
            "<div class='querySettings'>" +
                "<input type='text' class='form-control newQueryName' data-id='" + id + "' value='" + name + "' style='display: none;'>" +
            "</div>";
@@ -254,7 +259,7 @@ function buildHistoryMenu() {
     var queryHistoryWrapper = $('.query-history-list');
 
     if (!queryHistory.getAll().length) {
-        queryHistory.add('', 'Saved sparql 1');
+        queryHistory.add('', 'New sparql 1');
     }
     queryHistory.getAll().forEach(function(item) {
         menuContent += buildHistoryItem(item.id, item.name);
@@ -266,28 +271,69 @@ function buildHistoryMenu() {
     selectQueryHistoryItem(selectedId);
 }
 
+function deleteQueryHistoryItem(id) {
+    queryHistory.delete(id);
+    var selectedItem = $('.query-history-list').find(".list-group-item[data-id='" + id + "']");
+    selectedItem.next('.querySettings').remove();
+    selectedItem.remove();
+    editor.setValue('');
+}
+
 function selectQueryHistoryItem(id) {
-    var queryHistoryListElement = $('.query-history-list');
     var query = queryHistory.get(id);
+
+    var currentSelectedItem = $('.query-history-list .list-group-item.active');
+    if (currentSelectedItem.length) {
+        var currentSelectedItemId = currentSelectedItem.data('id');
+        if (currentSelectedItem.hasClass('not-saved')) {
+            var deleteNotSavedQuery = confirm('Save current query?');
+            if (deleteNotSavedQuery) {
+                saveQueryHistoryItem(currentSelectedItemId);
+            } else {
+                return;
+            }
+        }
+    }
 
     if (query) {
         $('.query-history-list .list-group-item').removeClass('active');
         queryHistoryListElement.find(".list-group-item[data-id='" + id + "']").addClass('active');
         editor.setValue(query.content);
         queryHistory.setSelectedId(id);
+        editor.setOption('id', id);
     }
 }
 
 function saveCurrentQuery() {
-    var selectedItem = queryHistory.get(queryHistory.getSelectedId());
+    saveQueryHistoryItem(queryHistory.getSelectedId());
+}
+
+function saveQueryHistoryItem(id) {
+    var selectedItem = queryHistory.get(id);
     selectedItem.content = editor.getValue();
     queryHistory.put(selectedItem);
+    queryHistoryListElement.find(".list-group-item[data-id='" + id + "']").removeClass('not-saved');
 }
 
 buildHistoryMenu();
 
+window.onbeforeunload = function() {
+    if (queryHistoryListElement.find('.list-group-item.not-saved').length) {
+        return 'There are some not-saved queries. Do you want to save them?';
+    }
+};
+
+editor.on('change', function(editor) {
+    var selectedId = queryHistoryListElement.find(".list-group-item.active").data('id');
+    if (editor.getOption('id') == selectedId) {
+        queryHistoryListElement.find(".list-group-item[data-id='" + selectedId + "']").addClass('not-saved');
+    }
+});
+
 $('.query-history-list').on('click', '.list-group-item', function() {
-    selectQueryHistoryItem($(this).data('id'));
+    if (!$(this).hasClass('active')) {
+        selectQueryHistoryItem($(this).data('id'));
+    }
 });
 
 $('#buttonAddQueryHistory').click(function() {
@@ -298,13 +344,8 @@ $('#buttonAddQueryHistory').click(function() {
 });
 
 $('#buttonDeleteQueryHistory').click(function() {
-    var selectedIndex = queryHistory.getSelectedId();
-    queryHistory.delete(selectedIndex);
-
-    var selectedItem = $('.query-history-list').find(".list-group-item[data-id='" + selectedIndex + "']");
-    selectedItem.next('.querySettings').remove();
-    selectedItem.remove();
-    editor.setValue('');
+    var selectedId = queryHistory.getSelectedId();
+    deleteQueryHistoryItem(selectedId);
 
     var selectingItem = $('.query-history-list').find(".list-group-item").first();
     if (selectingItem) {

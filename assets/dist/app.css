@@ -35,6 +35,12 @@ button {
 .query-history-list .list-group-item:last-child {
     border-bottom: 0;
 }
+.query-history-list .list-group-item.not-saved .queryTitle:before {
+    content: '*';
+    color: #e74c3c;
+    margin-right: 1em;
+    font-weight: bold;
+}
 
 .common-prefixes {
     margin-top: 1.5em;
