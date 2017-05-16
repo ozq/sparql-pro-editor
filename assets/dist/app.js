@@ -408,6 +408,6 @@ queryExecutionForm.submit(function(e) {
     // Send request
     //TODO: delete hardcode
     var requestUrl = 'http://draft.adposium.ru:8890/sparql?' + jQuery.param(parameters);
-    window.open(encodeURI(requestUrl), '_blank');
+    window.open(requestUrl, '_blank');
 });
 /** << Query execution **/
