@@ -65,3 +65,8 @@ button {
 .newQueryName {
     margin-bottom: 5px;
 }
+
+.query-execution-form {
+    float: right;
+    margin-top: 1em;
+}
