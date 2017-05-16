@@ -14,7 +14,7 @@
     "tests"
   ],
   "dependencies": {
-    "yasqe": "yasgui-yasqe#~2.11.9",
-    "bootstrap": "v4.0.0-alpha.6"
+    "bootstrap": "v4.0.0-alpha.6",
+    "yasqe": "git://github.com/ozq/YASGUI.YASQE#b012ab0d2a1f1b17822f6d487d754ca04d59d6b9"
   }
 }
