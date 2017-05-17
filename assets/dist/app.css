@@ -70,3 +70,10 @@ button {
     float: right;
     margin-top: 1em;
 }
+
+.uri-list {
+    font-size: 0.8rem;
+    margin: 0.1em 0 1em;
+    color: #666;
+    font-weight: 700;
+}

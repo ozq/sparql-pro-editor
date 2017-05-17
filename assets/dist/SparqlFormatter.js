@@ -1,3 +1,7 @@
+var triplePairsRegexpCode = '(?:(([?<$][\\w:\\/\\.\\-#>]+)[\\s\\.]+){3}){2}';
+var triplePairLinesRegexpCode = '(([?<$][\\w:\\/\\.\\-#>]+)[\\s\\.]+){3}';
+var triplePairElementsRegexpCode = '([?<$][\\w:\\/\\.\\-#>]+(?!\\w))';
+
 function deleteIndents()
 {
     YASQE.commands['selectAll'](editor);
@@ -93,4 +97,51 @@ function beautifyCode() {
     }
 
     editor.setValue(formattedContent.join('\r\n'));
+}
+
+function removeSingleton(content) {
+    var singletonProperty = 'singletonPropertyOf';
+    var triplePairsRegexp = new RegExp(triplePairsRegexpCode, 'gi');
+    var triplePairLinesRegexp = new RegExp(triplePairLinesRegexpCode, 'gi');
+    var triplePairElementsRegexp = new RegExp(triplePairElementsRegexpCode, 'gi');
+
+    var deletedUri = [];
+
+    var result = content.replace(triplePairsRegexp, function(triplePair) {
+        // Don't replace triple pair, if there is no singleton property
+        if (triplePair.indexOf(singletonProperty) == -1) {
+            return triplePair;
+        }
+
+        // Get triple pair lines
+        var triplePairLines = triplePair.match(triplePairLinesRegexp);
+
+        // Group triple pair lines
+        var groupedTriplePair = triplePairLines[0].indexOf(singletonProperty) !== -1 ?
+            triplePairLines[1] + triplePairLines[0] :
+            triplePairLines[0] + triplePairLines[1];
+
+        // Get triple pair elements
+        var triplePairElements = groupedTriplePair.match(triplePairElementsRegexp).map(function(element) {
+            return element.replace(/\.$/, '');
+        });
+
+        // Save predicate, if it is URI
+        if (triplePairElements[1].charAt(0) !== '?') {
+            deletedUri.push(triplePairElements[1]);
+        }
+
+        // If predicate on 1-st line is equal to subject on 2-nd line
+        if (triplePairElements[1] === triplePairElements[3]) {
+            // Build triple without singleton property
+            return triplePairElements[0] + ' ' + triplePairElements[5] + ' ' + triplePairElements[2] + '.\r\n';
+        } else {
+            return triplePair;
+        }
+    });
+
+    return {
+        result: result,
+        deleted_uri: deletedUri
+    };
 }
