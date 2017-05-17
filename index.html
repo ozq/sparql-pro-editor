@@ -39,6 +39,29 @@
     <script type="text/javascript" src="bower_components/yasqe/dist/yasqe.bundled.min.js"></script>
 </head>
 <body>
+<!-- MODALS -->
+<div class="modal fade" id="queryLeavingConfirmation" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Current query not saved</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                Do you want to save it?
+                <input type="hidden" name="leavingQueryId"/>
+                <input type="hidden" name="nextQueryId"/>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" id="buttonSaveAndLeaveCurrentQuery" data-dismiss="modal">Yes</button>
+                <button type="button" class="btn btn-danger" id="buttonLeaveCurrentQuery" data-dismiss="modal">No</button>
+                <button type="button" class="btn btn-primary" id="buttonCancelQueryLeaving" data-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- TOOLBAR -->
 <nav class="navbar navbar-toggleable-md navbar-inverse mb-4 toolbar">
@@ -108,6 +131,12 @@
     </div>
 </div>
 
+<script type="text/javascript" src="assets/dist/CodeEditor.js"></script>
+<script type="text/javascript" src="assets/dist/SparqlFormatter.js"></script>
+<script type="text/javascript" src="assets/dist/QueryHistory.js"></script>
+<script type="text/javascript" src="assets/dist/CommonPrefixes.js"></script>
+<script type="text/javascript" src="assets/dist/QueryExecution.js"></script>
+<script type="text/javascript" src="assets/dist/QueryLeavingConfirmation.js"></script>
 <script type="text/javascript" src="assets/dist/app.js"></script>
 </body>
 </html>
