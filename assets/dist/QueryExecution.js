@@ -15,15 +15,23 @@ function initQueryExecutionForm() {
 queryExecutionForm.submit(function(e) {
     e.preventDefault();
 
-    // Send request
+    // Get form data
+    var endpoint = $(this).find('input[name="endpoint"]').val().replace(/\?/g, '');
+    var graphUri = $(this).find('input[name="default-graph-uri"]').val();
+
+    // Save form data
+    localStorage.setItem('spe.queryExecution', JSON.stringify({
+        'default-graph-uri': graphUri,
+        'endpoint': endpoint
+    }));
+
+    // Build request parameters
     var parameters = {
-        'default-graph-uri': $(this).find('input[name="default-graph-uri"]').val(),
+        'default-graph-uri': graphUri,
         'query': editor.getValue()
     };
-    // Save request parameters
-    localStorage.setItem('spe.queryExecution', JSON.stringify(parameters));
+
     // Send request
-    //TODO: delete hardcode
-    var requestUrl = 'http://draft.adposium.ru:8890/sparql?' + jQuery.param(parameters);
+    var requestUrl = endpoint + '?' + jQuery.param(parameters);
     window.open(requestUrl, '_blank');
 });
