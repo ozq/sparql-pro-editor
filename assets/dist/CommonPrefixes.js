@@ -40,7 +40,7 @@ editor.on('change', function(editor) {
     var allQueryPrefixes = _.uniq(editor.getValue().match(new RegExp(allPrefixesRegexpCode, 'gi')));
     var queryUndefinedPrefixes = _.difference(allQueryPrefixes, definedQueryPrefixes);
     var commonPrefixes = getCommonPrefixesArray();
-    var newQueryPrefixes = [];
+    var newQueryPrefixes = {};
 
     queryUndefinedPrefixes.map(function(prefix) {
         if (commonPrefixes.hasOwnProperty(prefix)) {
@@ -48,7 +48,7 @@ editor.on('change', function(editor) {
         }
     });
 
-    if (newQueryPrefixes.length) {
+    if (!_.isEmpty(newQueryPrefixes)) {
         editor.addPrefixes(newQueryPrefixes);
     }
 });
