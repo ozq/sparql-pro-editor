@@ -45,7 +45,7 @@ $('#buttonCancelQueryLeaving').click(function() {
 });
 
 $('#buttonRemoveSingleton').click(function () {
-    var removeSingletonResult = removeSingleton(editor.getValue());
+    var removeSingletonResult = removeSingletonProperties(editor.getValue());
 
     if (removeSingletonResult.deleted_uri.length > 0) {
         localStorage.setItem('spe.contentWithoutSingleton', removeSingletonResult.result);
@@ -60,6 +60,12 @@ $('#buttonRemoveSingleton').click(function () {
 });
 $('#buttonDeleteSpUri').click(function () {
     editor.setValue(localStorage.getItem('spe.contentWithoutSingleton'));
+    //TODO: уйти от использования beautifyCode! Из-за него дольше выполняется функция.
+    beautifyCode();
+});
+$('#buttonAddSingleton').click(function() {
+    var addSingletonResult = addSingletonProperties(editor.getValue());
+    editor.setValue(addSingletonResult);
     //TODO: уйти от использования beautifyCode! Из-за него дольше выполняется функция.
     beautifyCode();
 });

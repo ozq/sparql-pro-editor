@@ -1,7 +1,10 @@
+//TODO: Данные regexp'ы могут захватывать лишние пробелы/точки. В будущем сделать их более "чистыми".
 var triplePairsRegexpCode = '(?:(([?<$\\w][\\w:\\/\\.\\-#>]+)[\\s\\.]+){3}){2}';
-var triplePairLinesRegexpCode = '(([?<$\\w][\\w:\\/\\.\\-#>]+)[\\s\\.]+){3}';
-var triplePairElementsRegexpCode = '([?<$\\w:][\\w:\\/\\.\\-#>]+(?!\\w))';
+var tripleLineRegexpCode = '(?:(?:[\\w]*[?<$:][\\w:\\/\\.\\-#>]+)[\\s\\.]+){3}';
+//var tripleElementsRegexpCode = '([?<$\\w:][\\w:\\/\\.\\-#>]+(?!\\w))';
+var tripleElementsRegexpCode = '[?<$\\w:][\\w:\\/\\.\\-#>]+[?!\\w>]';
 var allUriRegexpCode = '[\\w<]+\\:[\\w#\\/\\.-\ v\>-]+';
+var singletonPropertyUri = '\<http://www.w3.org/1999/02/22-rdf-syntax-ns#singletonPropertyOf>';
 
 function deleteIndents()
 {
@@ -100,11 +103,11 @@ function beautifyCode() {
     editor.setValue(formattedContent.join('\r\n'));
 }
 
-function removeSingleton(content) {
+function removeSingletonProperties(content) {
     var singletonProperty = 'singletonPropertyOf';
     var triplePairsRegexp = new RegExp(triplePairsRegexpCode, 'gi');
-    var triplePairLinesRegexp = new RegExp(triplePairLinesRegexpCode, 'gi');
-    var triplePairElementsRegexp = new RegExp(triplePairElementsRegexpCode, 'gi');
+    var triplePairLinesRegexp = new RegExp(tripleLineRegexpCode, 'gi');
+    var triplePairElementsRegexp = new RegExp(tripleElementsRegexpCode, 'gi');
 
     var deletedUri = [];
 
@@ -145,4 +148,27 @@ function removeSingleton(content) {
         result: result,
         deleted_uri: deletedUri
     };
+}
+
+function addSingletonProperties(content) {
+    var tripleLineRegexp = new RegExp(tripleLineRegexpCode, 'gi');
+    var tripleElementsRegexp = new RegExp(tripleElementsRegexpCode, 'gi');
+    var singletonPropertyNumber = 0;
+    var replaceStartPosition = content.search('WHERE');
+
+    return content.replace(tripleLineRegexp, function(triple, offset) {
+        if (offset < replaceStartPosition) {
+            return triple;
+        }
+
+        singletonPropertyNumber++;
+        var singletonProperty = '?sp_' + singletonPropertyNumber;
+
+        // Get triple elements
+        var triplePairElements = triple.match(tripleElementsRegexp);
+
+        // Build triple with singleton property
+        return triplePairElements[0] + ' ' + singletonProperty + ' ' + triplePairElements[2] + '.\r\n' +
+        singletonProperty + ' ' + singletonPropertyUri + ' ' + triplePairElements[1] + '.\r\n';
+    });
 }
