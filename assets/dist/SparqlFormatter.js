@@ -1,6 +1,6 @@
-var triplePairsRegexpCode = '(?:(([?<$][\\w:\\/\\.\\-#>]+)[\\s\\.]+){3}){2}';
-var triplePairLinesRegexpCode = '(([?<$][\\w:\\/\\.\\-#>]+)[\\s\\.]+){3}';
-var triplePairElementsRegexpCode = '([?<$][\\w:\\/\\.\\-#>]+(?!\\w))';
+var triplePairsRegexpCode = '(?:(([?<$\\w][\\w:\\/\\.\\-#>]+)[\\s\\.]+){3}){2}';
+var triplePairLinesRegexpCode = '(([?<$\\w][\\w:\\/\\.\\-#>]+)[\\s\\.]+){3}';
+var triplePairElementsRegexpCode = '([?<$\\w:][\\w:\\/\\.\\-#>]+(?!\\w))';
 var allUriRegexpCode = '[\\w<]+\\:[\\w#\\/\\.-\ v\>-]+';
 
 function deleteIndents()
