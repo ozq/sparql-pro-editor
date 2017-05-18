@@ -34,3 +34,21 @@ function initCommonPrefixesData() {
         getCommonPrefixesTextArea().value = data.join('\n');
     }
 }
+
+editor.on('change', function(editor) {
+    var definedQueryPrefixes = Object.keys(editor.getPrefixesFromQuery());
+    var allQueryPrefixes = _.uniq(editor.getValue().match(new RegExp(allPrefixesRegexpCode, 'gi')));
+    var queryUndefinedPrefixes = _.difference(allQueryPrefixes, definedQueryPrefixes);
+    var commonPrefixes = getCommonPrefixesArray();
+    var newQueryPrefixes = [];
+
+    queryUndefinedPrefixes.map(function(prefix) {
+        if (commonPrefixes.hasOwnProperty(prefix)) {
+            newQueryPrefixes[prefix] = commonPrefixes[prefix];
+        }
+    });
+
+    if (newQueryPrefixes.length) {
+        editor.addPrefixes(newQueryPrefixes);
+    }
+});

@@ -1,10 +1,10 @@
 //TODO: Данные regexp'ы могут захватывать лишние пробелы/точки. В будущем сделать их более "чистыми".
 var triplePairsRegexpCode = '(?:(([?<$\\w][\\w:\\/\\.\\-#>]+)[\\s\\.]+){3}){2}';
 var tripleLineRegexpCode = '(?:(?:[\\w]*[?<$:][\\w:\\/\\.\\-#>]+)[\\s\\.]+){3}';
-//var tripleElementsRegexpCode = '([?<$\\w:][\\w:\\/\\.\\-#>]+(?!\\w))';
 var tripleElementsRegexpCode = '[?<$\\w:][\\w:\\/\\.\\-#>]+[?!\\w>]';
 var allUriRegexpCode = '[\\w<]+\\:[\\w#\\/\\.-\ v\>-]+';
 var singletonPropertyUri = '\<http://www.w3.org/1999/02/22-rdf-syntax-ns#singletonPropertyOf>';
+var allPrefixesRegexpCode = '[\\w]+(?=:(?!\\/\\/))';
 
 function deleteIndents()
 {
