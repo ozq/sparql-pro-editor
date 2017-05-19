@@ -37,25 +37,28 @@ queryExecutionForm.submit(function(e) {
     var queryTimeExecutionEnd;
     var queryTimeExecution;
 
-    // Send request
-    $.ajax({
-        url: requestUrl,
-        dataType: 'html',
-        beforeSend: function() {
-            queryTimeExecutionStart = new Date().getTime();
-            $('#buttonShowQueryResult').attr('disabled', true).removeClass('btn-info').addClass('btn-secondary');
-        }
-    }).always(function(response) {
+    var responseElement = $('.query-execution-result_response');
+
+    // Clear result
+    $('#buttonShowQueryResult').attr('disabled', true).removeClass('btn-info').addClass('btn-secondary');
+    $('#buttonExecuteQuery').attr('disabled', true);
+    $('.query-execution-time').hide();
+    $('.query-execution-result_loader').show();
+    responseElement.hide();
+
+    // Load result
+    queryTimeExecutionStart = new Date().getTime();
+    responseElement.on('load', function(e) {
         queryTimeExecutionEnd = new Date().getTime();
         queryTimeExecution = queryTimeExecutionEnd - queryTimeExecutionStart;
-
-        var responseContent = _.isObject(response) ? response.responseText : response;
-
-        $('.query-execution-result_response').html(responseContent);
+        $('.query-execution-result_loader').hide();
         $('.query-execution-time_value').html(queryTimeExecution + ' ms.');
+        $('.query-execution-time').show();
         $('#buttonShowQueryResult').removeAttr('disabled').removeClass('btn-secondary').addClass('btn-info');
-    });
+        $('#buttonExecuteQuery').removeAttr('disabled');
+        $(this).show();
+    }).attr('src', requestUrl);
 
-    // Show response
+    // Show result
     $('#queryExecutionResult').modal('show');
 });
