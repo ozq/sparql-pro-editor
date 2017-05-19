@@ -1,0 +1,34 @@
+version: '2'
+services:
+
+  # APPLICATION
+  app:
+    build:
+      context:    ./
+      dockerfile: app.dockerfile
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+
+  # WEB SERVER
+  web:
+    build:
+      context:    ./
+      dockerfile: web.dockerfile
+    working_dir: /var/www
+    volumes_from:
+      - app
+    ports:
+      - 80:80
+
+  # DATABASE
+  db:
+    image: mysql:5.7
+    restart: always
+    environment:
+      MYSQL_DATABASE: sparql
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: admin
+      MYSQL_ROOT_PASSWORD: admin
+    ports:
+      - 33061:3306
