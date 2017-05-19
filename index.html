@@ -31,6 +31,7 @@
     <link rel="stylesheet" type="text/css" href="bower_components/bootstrap/dist/css/bootstrap.min.css"/>
     <link rel="stylesheet" type="text/css" href="bower_components/tether/dist/css/tether.min.css"/>
     <link rel="stylesheet" type="text/css" href="bower_components/yasqe/dist/yasqe.min.css"/>
+    <link rel="stylesheet" type="text/css" href="bower_components/font-awesome/css/font-awesome.min.css"/>
     <link rel="stylesheet" type="text/css" href="assets/dist/app.css"/>
 
     <script type="text/javascript" src="bower_components/jquery/dist/jquery.min.js"></script>
@@ -74,12 +75,36 @@
             </div>
             <div class="modal-body">
                 There are URI in singleton properties:
-                <div class="uri-list"></div>
+                <div class="system-text"></div>
                 These URI will be lost. Do you want to continue?
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-danger" id="buttonDeleteSpUri" data-dismiss="modal">Yes</button>
                 <button type="button" class="btn btn-success" id="buttonCancelDeletingSpUri" data-dismiss="modal">No</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="queryExecutionResult" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document" style="max-width: 1200px;">
+        <div class="modal-content" style="overflow-x: scroll;">
+            <div class="modal-header">
+                <h5 class="modal-title">Execution result</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="query-execution-result">
+                    <p class="query-execution-time system-text">
+                        Execution time:
+                        <span class="query-execution-time_value"></span>
+                    </p>
+                    <div class="query-execution-result_response"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -106,23 +131,32 @@
 <!-- CONTENT -->
 <div class="container-fluid">
     <div class="row">
-        <!-- SPARQL EDITOR -->
-        <div class="col-sm-12 col-md-9 sparql-editor-wrapper">
-            <label>Enter your SPARQL code:</label>
-            <div class="btn-group-sm query-buttons" role="group">
-                <button type="button" class="btn btn-secondary">< Prev</button>
-                <button type="button" class="btn btn-secondary">Redo ></button>
+        <div class="col-sm-12 col-md-9">
+            <!-- SPARQL EDITOR -->
+            <div class="sparql-editor-wrapper">
+                <label>Enter your SPARQL code:</label>
+                <div class="btn-group-sm query-buttons" role="group">
+                    <button type="button" class="btn btn-secondary">< Prev</button>
+                    <button type="button" class="btn btn-secondary">Redo ></button>
+                </div>
+                <textarea id="yasqe"></textarea>
             </div>
-            <textarea id="yasqe"></textarea>
-            <form class="form-inline query-execution-form" id="formExecuteQuery">
-                <div class="form-group">
-                    <input type="text" name="default-graph-uri" class="form-control" placeholder="Default Data Set Name (Graph IRI)">
-                </div>
-                <div class="form-group mx-sm-3">
-                    <input type="text" name="endpoint" class="form-control" placeholder="URL SPARQL Endpoint">
-                </div>
-                <button type="submit" class="btn btn-success" id="buttonExecuteQuery">Execute</button>
-            </form>
+            <!-- QUERY EXECUTION -->
+            <div class="query-execution">
+                <label>Query execution:</label>
+                <form class="form-inline query-execution-form" id="formExecuteQuery">
+                    <div class="form-group">
+                        <input type="text" name="default-graph-uri" class="form-control" placeholder="Default Data Set Name (Graph IRI)">
+                    </div>
+                    <div class="form-group mx-sm-3">
+                        <input type="text" name="endpoint" class="form-control" placeholder="URL SPARQL Endpoint">
+                    </div>
+                    <div class="form-group mx-sm-3">
+                        <button type="submit" class="btn btn-success" id="buttonExecuteQuery">Execute</button>
+                    </div>
+                    <button type="button" class="btn btn-secondary" id="buttonShowQueryResult" disabled>Show result</button>
+                </form>
+            </div>
         </div>
         <!-- SIDEBAR -->
         <div class="col-sm-12 col-md-3 sidebar-wrapper">

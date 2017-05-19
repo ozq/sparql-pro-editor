@@ -66,12 +66,7 @@ button {
     margin-bottom: 5px;
 }
 
-.query-execution-form {
-    float: right;
-    margin-top: 1em;
-}
-
-.uri-list {
+.system-text {
     font-size: 0.8rem;
     margin: 0.1em 0 1em;
     color: #666;

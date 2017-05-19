@@ -69,3 +69,7 @@ $('#buttonAddSingleton').click(function() {
     //TODO: уйти от использования beautifyCode! Из-за него дольше выполняется функция.
     beautifyCode();
 });
+
+$('#buttonShowQueryResult').click(function() {
+    $('#queryExecutionResult').modal('show');
+});
