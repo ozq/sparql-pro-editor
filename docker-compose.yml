@@ -32,3 +32,22 @@ services:
       MYSQL_ROOT_PASSWORD: admin
     ports:
       - 33061:3306
+
+  # COMPOSER
+  composer:
+    restart: 'no'
+    image: composer/composer
+    working_dir: /var/www
+    volumes_from:
+      - app
+    command: install
+
+  # CLIENT BUILDER
+  client-builder:
+    build:
+      context:    ./
+      dockerfile: node.dockerfile
+    working_dir: /var/www
+    volumes_from:
+      - app
+    command: bash -c 'bower install --allow-root'
