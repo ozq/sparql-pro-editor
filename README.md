@@ -19,8 +19,12 @@ $ docker-compose build
 ```code
 $ docker-compose up
 ```
+```
+$ docker-compose exec app php artisan migrate
+```
 Next, edit your hosts file:
 ```
 127.0.0.1 sparql-pro-editor.local
 ```
+
 Then, you should open in your browser url: http://sparql-pro-editor.local

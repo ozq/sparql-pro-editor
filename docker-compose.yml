@@ -4,16 +4,19 @@ services:
   # APPLICATION
   app:
     build:
-      context:    ./
+      context: ./
       dockerfile: app.dockerfile
     working_dir: /var/www
     volumes:
       - ./:/var/www
+    environment:
+      - DB_PORT=3306
+      - DB_HOST=db
 
   # WEB SERVER
   web:
     build:
-      context:    ./
+      context: ./
       dockerfile: web.dockerfile
     working_dir: /var/www
     volumes_from:
@@ -25,11 +28,13 @@ services:
   db:
     image: mysql:5.7
     restart: always
+    volumes:
+      - dbdata:/var/lib/mysql
     environment:
-      MYSQL_DATABASE: sparql
-      MYSQL_USER: admin
-      MYSQL_PASSWORD: admin
-      MYSQL_ROOT_PASSWORD: admin
+      - MYSQL_DATABASE=sparql
+      - MYSQL_USER=admin
+      - MYSQL_PASSWORD=admin
+      - MYSQL_ROOT_PASSWORD=admin
     ports:
       - 33061:3306
 
@@ -45,9 +50,12 @@ services:
   # CLIENT BUILDER
   client-builder:
     build:
-      context:    ./
+      context: ./
       dockerfile: node.dockerfile
     working_dir: /var/www
     volumes_from:
       - app
     command: bash -c 'bower install --allow-root'
+
+volumes:
+  dbdata:
