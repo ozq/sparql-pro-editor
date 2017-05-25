@@ -23,6 +23,8 @@ services:
       - app
     ports:
       - 80:80
+    links:
+      - app:app
 
   # DATABASE
   db:
