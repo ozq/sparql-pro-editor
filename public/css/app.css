@@ -22,20 +22,20 @@ button {
     float: right;
 }
 
-.query-history-list {
+.query-list {
     height: 15em;
     overflow-x: hidden;
     overflow-y: scroll;
     border: 1px solid rgba(0,0,0,.125);
 }
-.query-history-list .list-group-item {
+.query-list .list-group-item {
     border-radius: 0;
     flex-shrink: 0;
 }
-.query-history-list .list-group-item:last-child {
+.query-list .list-group-item:last-child {
     border-bottom: 0;
 }
-.query-history-list .list-group-item.not-saved .queryTitle:before {
+.query-list .list-group-item.not-saved .queryTitle:before {
     content: '*';
     color: #e74c3c;
     margin-right: 1em;

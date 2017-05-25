@@ -17,11 +17,11 @@ queryExecutionForm.submit(function(e) {
 
     // Get form data
     var endpoint = $(this).find('input[name="endpoint"]').val().replace(/\?/g, '');
-    var graphUri = $(this).find('input[name="default-graph-uri"]').val();
+    var graphUri = $(this).find('input[name="default_graph_uri"]').val();
 
     // Save form data
     localStorage.setItem('spe.queryExecution', JSON.stringify({
-        'default-graph-uri': graphUri,
+        'default_graph_uri': graphUri,
         'endpoint': endpoint
     }));
 

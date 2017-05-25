@@ -18,3 +18,9 @@ $app->get('/', function () use ($app) {
 $app->get('/isBackendInstalled', function () use ($app) {
     return response('yes', 200);
 });
+
+$app->get('/api/v1/sharedQuery/{id}', 'SharedQueryController@get');
+$app->get('/api/v1/sharedQuery', 'SharedQueryController@index');
+$app->post('/api/v1/sharedQuery', 'SharedQueryController@store');
+$app->put('/api/v1/sharedQuery/{id}', 'SharedQueryController@update');
+$app->delete('/api/v1/sharedQuery/{id}', 'SharedQueryController@delete');

@@ -5,7 +5,8 @@ function buildCodeEditor() {
         document.getElementById('yasqe'),
         {
             mode: 'sparql11',
-            indentUnit: 4
+            indentUnit: 4,
+            createShareLink: false
         }
     );
 }

@@ -141,6 +141,7 @@
                 <div class="btn-group-sm query-buttons" role="group">
                     <button type="button" class="btn btn-secondary">< Prev</button>
                     <button type="button" class="btn btn-secondary">Redo ></button>
+                    <button type="button" class="btn btn-info" id="buttonShareQuery" data-ability="backend">Share</button>
                 </div>
                 <textarea id="yasqe"></textarea>
             </div>
@@ -149,10 +150,10 @@
                 <label>Query execution:</label>
                 <form class="form-inline query-execution-form" id="formExecuteQuery">
                     <div class="form-group">
-                        <input type="text" name="default-graph-uri" class="form-control" placeholder="Default Data Set Name (Graph IRI)">
+                        <input type="text" name="default_graph_uri" class="form-control" placeholder="Default Data Set Name (Graph IRI)">
                     </div>
                     <div class="form-group mx-sm-3">
-                        <input type="text" name="endpoint" class="form-control" placeholder="URL SPARQL Endpoint">
+                        <input type="text" name="endpoint" class="form-control" placeholder="URL SPARQL Endpoint" required>
                     </div>
                     <div class="form-group mx-sm-3">
                         <button type="submit" class="btn btn-success" id="buttonExecuteQuery">Execute</button>
@@ -163,16 +164,27 @@
         </div>
         <!-- SIDEBAR -->
         <div class="col-sm-12 col-md-3 sidebar-wrapper">
-            <!-- HISTORY -->
+            <!-- LOCAL QUERIES -->
             <div class="sidebar-item">
-                <label class="sidebar-item_label">History</label>
+                <label class="sidebar-item_label">Local queries</label>
                 <div class="btn-group-sm sidebar-item_buttons" role="group">
-                    <button type="button" class="btn btn-primary" id="buttonAddQueryHistory">New</button>
-                    <button type="button" class="btn btn-success" id="buttonSaveQueryHistory">Save</button>
-                    <button type="button" class="btn btn-danger" id="buttonDeleteQueryHistory">Delete</button>
+                    <button type="button" class="btn btn-primary" id="buttonAddLocalQuery">New</button>
+                    <button type="button" class="btn btn-success" id="buttonSaveLocalQuery">Save</button>
+                    <button type="button" class="btn btn-danger" id="buttonDeleteLocalQuery">Delete</button>
                 </div>
                 <div class="sidebar-item_content">
-                    <div class="list-group query-history-list"></div>
+                    <div id="local-query-list" class="list-group query-list"></div>
+                </div>
+            </div>
+            <!-- SHARED QUERIES -->
+            <div class="sidebar-item">
+                <label class="sidebar-item_label">Shared queries</label>
+                <div class="btn-group-sm sidebar-item_buttons" role="group">
+                    <button type="button" class="btn btn-success" id="buttonSaveSharedQuery" data-ability="backend">Save</button>
+                    <button type="button" class="btn btn-danger" id="buttonDeleteSharedQuery" data-ability="backend">Delete</button>
+                </div>
+                <div class="sidebar-item_content">
+                    <div id="shared-query-list" class="list-group query-list"></div>
                 </div>
             </div>
             <!-- COMMON PREFIXES -->
@@ -192,7 +204,10 @@
 <script type="text/javascript" src="js/AppConfig.js"></script>
 <script type="text/javascript" src="js/CodeEditor.js"></script>
 <script type="text/javascript" src="js/SparqlFormatter.js"></script>
-<script type="text/javascript" src="js/QueryHistory.js"></script>
+<script type="text/javascript" src="js/QueriesLocalRepository.js"></script>
+<script type="text/javascript" src="js/QueriesSharedRepository.js"></script>
+<script type="text/javascript" src="js/QueryList.js"></script>
+<script type="text/javascript" src="js/QueryListManager.js"></script>
 <script type="text/javascript" src="js/CommonPrefixes.js"></script>
 <script type="text/javascript" src="js/QueryExecution.js"></script>
 <script type="text/javascript" src="js/QueryLeavingConfirmation.js"></script>
