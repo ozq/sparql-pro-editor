@@ -12,6 +12,8 @@ services:
     environment:
       - DB_PORT=3306
       - DB_HOST=db
+    links:
+      - db:db
 
   # WEB SERVER
   web:

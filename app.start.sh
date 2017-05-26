@@ -6,4 +6,6 @@ fi
 php artisan cache:clear
 chmod -R 777 ./storage
 
+php artisan migrate
+
 php-fpm
