@@ -66,10 +66,10 @@ $('#buttonSaveSharedQuery').click(function() {
 });
 
 $('#buttonBeautify').click(function() {
-    beautifyCode();
+    editor.setValue(beautifyCode(editor.getValue(), editor.options.indentUnit));
 });
 $('#buttonRemoveMinus').click(function() {
-    removeAllOperatorsByName('minus');
+    editor.setValue(removeAllOperatorsByName(editor.getValue(), 'minus'));
 });
 $('#buttonExpand').click(function() {
     var replacedContent = expandUri(editor.getValue(), getAllPrefixes());
@@ -109,20 +109,17 @@ $('#buttonRemoveSingleton').click(function () {
         confirmationElement.modal('show');
     } else {
         editor.setValue(removeSingletonResult.result);
-        //TODO: уйти от использования beautifyCode! Из-за него дольше выполняется функция.
-        beautifyCode();
+        editor.setValue(beautifyCode(editor.getValue(), editor.options.indentUnit));
     }
 });
 $('#buttonDeleteSpUri').click(function () {
     editor.setValue(localStorage.getItem('spe.contentWithoutSingleton'));
-    //TODO: уйти от использования beautifyCode! Из-за него дольше выполняется функция.
-    beautifyCode();
+    editor.setValue(beautifyCode(editor.getValue(), editor.options.indentUnit));
 });
 $('#buttonAddSingleton').click(function() {
     var addSingletonResult = addSingletonProperties(editor.getValue());
     editor.setValue(addSingletonResult);
-    //TODO: уйти от использования beautifyCode! Из-за него дольше выполняется функция.
-    beautifyCode();
+    editor.setValue(beautifyCode(editor.getValue(), editor.options.indentUnit));
 });
 
 $('#buttonShowQueryResult').click(function() {

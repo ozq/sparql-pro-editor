@@ -1,25 +1,36 @@
-//TODO: Данные regexp'ы могут захватывать лишние пробелы/точки. В будущем сделать их более "чистыми".
+//TODO: Проверить регэкспы на предмет захвата лишних пробелов, точек, и т.п. В случае чего - поправить.
 var triplePairsRegexpCode = '(?:(([?<$\\w][\\w:\\/\\.\\-#>]+)[\\s\\.]+){3}){2}';
 var tripleLineRegexpCode = '(?:(?:[\\w]*[?<$:][\\w:\\/\\.\\-#>]+)[\\s\\.]+){3}';
 var tripleElementsRegexpCode = '[?<$\\w:][\\w:\\/\\.\\-#>]+[?!\\w>]';
 var allUriRegexpCode = '[\\w<]+\\:[\\w#\\/\\.-\ v\>-]+';
 var singletonPropertyUri = '\<http://www.w3.org/1999/02/22-rdf-syntax-ns#singletonPropertyOf>';
 var allPrefixesRegexpCode = '[\\w]+(?=:(?!\\/\\/))';
+var excessLineRegexpCode = '(\\n\\s*){2}[^\\S\\t]';
+var allIndents = '^[\\t ]+(?![\\n])(?=[\\S])';
 
-function deleteIndents()
-{
-    YASQE.commands['selectAll'](editor);
-    editor.indentSelection('prev');
+function beautifyCode(content, indentLength) {
+    return correctBrackets(
+        removeExcessLines(
+            removeExcessLinesInOperators(
+                removeIndents(content)
+            )
+        ),
+        indentLength
+    );
 }
 
-function getStringWithIndents(indentDepth, string) {
-    return new Array(indentDepth * editor.options.indentUnit).join(' ') + string;
+function removeIndents(content) {
+    return content.replace(new RegExp(allIndents, 'gm'), '');
 }
 
-function removeAllOperatorsByName(name) {
+function getStringWithIndents(indentDepth, indentLength, string) {
+    return new Array(indentDepth * indentLength).join(' ') + string;
+}
+
+function removeAllOperatorsByName(content, name) {
     var operatorStartIndex = 0;
-    var processContent = editor.getValue();
-    var operatorRegexp = new RegExp(name + '\\s*{', 'i');
+    var processContent = content;
+    var operatorRegexp = new RegExp('[^}\\n]\\s*' + name + '\\s*{', 'i');
 
     do {
         // Find operator start index
@@ -51,8 +62,39 @@ function removeAllOperatorsByName(name) {
         }
     } while (operatorStartIndex >= 0);
 
-    // Update editor content
-    editor.setValue(processContent);
+    return processContent;
+}
+
+function removeExcessLines(content) {
+    return content.replace(new RegExp(excessLineRegexpCode, 'gi'), '\r\n');
+}
+
+function removeExcessLinesInOperators(content) {
+    var contentLines = content.split('\n');
+    var indentDepth = 0;
+    var formattedContent = [];
+    var lineCount = contentLines.length;
+    var emptyLineRegexp = new RegExp('^\\s+$', 'gm');
+    var operatorContainRegexp = new RegExp('\\s*\\w+\\s*{', 'gm');
+
+    for (var i = 0; i < lineCount; i++) {
+        var currentString = contentLines[i];
+
+        currentString.indexOf('{') > -1 ? indentDepth++ : false;
+        currentString.indexOf('}') > -1 ? indentDepth-- : false;
+
+        if (indentDepth >= 0) {
+            var isCurrentLineEmpty = currentString.replace(/^\s+|\s+$/g, '') === '' || emptyLineRegexp.test(currentString);
+            var nextLine = contentLines[i + 1];
+            var isNextLineWithoutOperator = !operatorContainRegexp.test(nextLine);
+
+            if (!(isCurrentLineEmpty && isNextLineWithoutOperator)) {
+                formattedContent += currentString + '\r';
+            }
+        }
+    }
+
+    return formattedContent;
 }
 
 function expandUri(content, prefixes) {
@@ -79,28 +121,28 @@ function compactUri(content, prefixes) {
     return content;
 }
 
-function beautifyCode() {
-    deleteIndents();
+function correctBrackets(content, indentLength) {
+    var contentLines = content.split('\r');
 
     var indentDepth = 0;
     var formattedContent = [];
-    var lineCount = editor.lineCount();
+    var lineCount = contentLines.length;
 
     for (var i = 0; i < lineCount; i++) {
-        var currentString = editor.getLine(i);
+        var currentString = contentLines[i];
         if (currentString.indexOf('{') > -1) {
-            currentString = getStringWithIndents(indentDepth, currentString);
+            currentString = getStringWithIndents(indentDepth, indentLength, currentString);
             indentDepth++;
         } else {
             if (currentString.indexOf('}') > -1) {
                 indentDepth--;
             }
-            currentString = getStringWithIndents(indentDepth, currentString);
+            currentString = getStringWithIndents(indentDepth, indentLength, currentString);
         }
         formattedContent.push(currentString);
     }
 
-    editor.setValue(formattedContent.join('\r\n'));
+    return formattedContent.join('\r\n');
 }
 
 function removeSingletonProperties(content) {
