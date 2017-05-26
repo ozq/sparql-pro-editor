@@ -55,7 +55,8 @@ class QueryExecutionForm {
             // Build request parameters
             var parameters = {
                 'default-graph-uri': graphUri,
-                'query': editor.getValue()
+                'query': editor.getValue(),
+                'debug': 'on'
             };
             var requestUrl = endpoint + '?' + jQuery.param(parameters);
 
