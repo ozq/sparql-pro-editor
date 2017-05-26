@@ -146,19 +146,24 @@
                 <textarea id="yasqe" style="display: none;"></textarea>
             </div>
             <!-- QUERY EXECUTION -->
-            <div class="query-execution">
-                <label>Query execution:</label>
-                <form class="form-inline query-execution-form" id="formExecuteQuery">
+            <div class="query-execution col-xs-12 col-md-6">
+                <form class="query-execution-form" id="formExecuteQuery">
                     <div class="form-group">
+                        <label>Default Data Set Name (Graph IRI):</label>
                         <input type="text" name="default_graph_uri" class="form-control" placeholder="Default Data Set Name (Graph IRI)">
                     </div>
-                    <div class="form-group mx-sm-3">
+                    <div class="form-group">
+                        <label>URL SPARQL Endpoint:</label>
                         <input type="text" name="endpoint" class="form-control" placeholder="URL SPARQL Endpoint" required>
                     </div>
-                    <div class="form-group mx-sm-3">
-                        <button type="submit" class="btn btn-success" id="buttonExecuteQuery">Execute</button>
+                    <div class="form-group">
+                        <label>Environment:</label>
+                        <select name="query-execution-env" class="form-control" id="selectQuerySettings"></select>
                     </div>
-                    <button type="button" class="btn btn-secondary" id="buttonShowQueryResult" disabled>Show last result</button>
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-success" id="buttonExecuteQuery">Execute</button>
+                        <button type="button" class="btn btn-secondary" id="buttonShowQueryResult" disabled>Show last result</button>
+                    </div>
                 </form>
             </div>
         </div>
@@ -204,12 +209,13 @@
 <script type="text/javascript" src="js/AppConfig.js"></script>
 <script type="text/javascript" src="js/CodeEditor.js"></script>
 <script type="text/javascript" src="js/SparqlFormatter.js"></script>
+<script type="text/javascript" src="js/QuerySettingsRepository.js"></script>
 <script type="text/javascript" src="js/QueriesLocalRepository.js"></script>
 <script type="text/javascript" src="js/QueriesSharedRepository.js"></script>
 <script type="text/javascript" src="js/QueryList.js"></script>
 <script type="text/javascript" src="js/QueryListManager.js"></script>
 <script type="text/javascript" src="js/CommonPrefixes.js"></script>
-<script type="text/javascript" src="js/QueryExecution.js"></script>
+<script type="text/javascript" src="js/QueryExecutionForm.js"></script>
 <script type="text/javascript" src="js/QueryLeavingConfirmation.js"></script>
 <script type="text/javascript" src="js/app.js"></script>
 </body>

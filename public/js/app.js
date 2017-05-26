@@ -1,5 +1,5 @@
 initCommonPrefixesData();
-initQueryExecutionForm();
+var queryExectuionForm = new QueryExecutionForm('#formExecuteQuery', '#selectQuerySettings', new QuerySettingsRepository());
 
 var queryListManager = new QueryListManager();
 var localQueryList = new QueryList('#local-query-list', new QueriesLocalRepository(), editor);
