@@ -69,7 +69,8 @@ $('#buttonBeautify').click(function() {
     editor.setValue(beautifyCode(editor.getValue(), editor.options.indentUnit));
 });
 $('#buttonRemoveMinus').click(function() {
-    editor.setValue(removeAllOperatorsByName(editor.getValue(), 'minus'));
+    var contentWithoutMinus = removeAllOperatorsByName(editor.getValue(), 'minus');
+    editor.setValue(beautifyCode(contentWithoutMinus, editor.options.indentUnit));
 });
 $('#buttonExpand').click(function() {
     var replacedContent = expandUri(editor.getValue(), getAllPrefixes());
@@ -108,16 +109,19 @@ $('#buttonRemoveSingleton').click(function () {
         confirmationElement.find('.uri-list').text(removeSingletonResult.deleted_uri);
         confirmationElement.modal('show');
     } else {
+        //TODO: обойтись одним setter'ом
         editor.setValue(removeSingletonResult.result);
         editor.setValue(beautifyCode(editor.getValue(), editor.options.indentUnit));
     }
 });
 $('#buttonDeleteSpUri').click(function () {
+    //TODO: обойтись одним setter'ом
     editor.setValue(localStorage.getItem('spe.contentWithoutSingleton'));
     editor.setValue(beautifyCode(editor.getValue(), editor.options.indentUnit));
 });
 $('#buttonAddSingleton').click(function() {
     var addSingletonResult = addSingletonProperties(editor.getValue());
+    //TODO: обойтись одним setter'ом
     editor.setValue(addSingletonResult);
     editor.setValue(beautifyCode(editor.getValue(), editor.options.indentUnit));
 });

@@ -30,7 +30,7 @@ function getStringWithIndents(indentDepth, indentLength, string) {
 function removeAllOperatorsByName(content, name) {
     var operatorStartIndex = 0;
     var processContent = content;
-    var operatorRegexp = new RegExp('[^}\\n]\\s*' + name + '\\s*{', 'i');
+    var operatorRegexp = new RegExp(name + '\\s*{', 'gi');
 
     do {
         // Find operator start index
