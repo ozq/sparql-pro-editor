@@ -16,7 +16,7 @@ class QueryList {
             items.forEach(function(item) {
                 listContent += queryListObj.buildListItem(item.id, item.name);
             });
-            this.element.html(listContent);
+            this.element.hide().html(listContent).fadeIn('slow');
         }
     }
 

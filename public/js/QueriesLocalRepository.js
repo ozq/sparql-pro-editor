@@ -12,7 +12,9 @@ class QueriesLocalRepository {
             this.save(items);
         }
 
-        return items ? items : [];
+        items = _.sortBy(items, [function(item) { return item.updated_at; }]).reverse();
+
+        return items;
     };
 
     get(id) {
@@ -29,6 +31,7 @@ class QueriesLocalRepository {
     };
 
     add(item) {
+        item.updated_at = this.getCurrentUpdatedAtMark();
         var history = this.getAll();
         history.push(item);
         this.save(history);
@@ -36,6 +39,7 @@ class QueriesLocalRepository {
     };
 
     put(item) {
+        item.updated_at = this.getCurrentUpdatedAtMark();
         var history = this.getAll();
         history[this.getIndexById(item.id)] = item;
         this.save(history);
@@ -56,7 +60,12 @@ class QueriesLocalRepository {
         return {
             'id': this.generateId(),
             'name': item && item.name ? item.name : _.uniqueId('New sparql '),
-            'query': item && item.query ? item.query : ''
+            'query': item && item.query ? item.query : '',
+            'updated_at': this.getCurrentUpdatedAtMark()
         };
+    }
+
+    getCurrentUpdatedAtMark() {
+        return new Date().getTime();
     }
 }

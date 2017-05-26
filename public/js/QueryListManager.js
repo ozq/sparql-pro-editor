@@ -107,6 +107,16 @@ class QueryListManager {
                 selectedItem.query = queryList.editor.getValue();
                 queryList.repository.put(selectedItem);
                 queryList.element.find(".list-group-item[data-id='" + selectedId + "']").removeClass('not-saved');
+
+                var allItems = queryList.element.find('.list-group-item').not('.active');
+
+                // Rebuild list (last updated items)
+                queryList.element.html('');
+                allItems.splice(0, 0, selectedListItem);
+                $.each(allItems, function(i, item) {
+                    queryList.element.append(item);
+                });
+                queryList.element.fadeIn();
             } else {
                 console.warn('Selected item not found!');
             }
@@ -134,7 +144,7 @@ class QueryListManager {
         if (!isTemporary) {
             var newItem = queryList.repository.add(preparedItemData);
         }
-        queryList.element.append(queryList.buildListItem(newItem.id, newItem.name, isNew));
+        queryList.element.prepend(queryList.buildListItem(newItem.id, newItem.name, isNew));
         return newItem.id;
     }
 
