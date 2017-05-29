@@ -214,3 +214,60 @@ function addSingletonProperties(content) {
         singletonProperty + ' ' + singletonPropertyUri + ' ' + triplePairElements[1] + '.\r\n';
     });
 }
+
+function getUndefinedVariables(content) {
+    //TODO: this algorithm isn't consider nested SELECT/WHERE pairs [!!!]
+
+    var contentLines = content.split('\n');
+
+    var lineCount = contentLines.length;
+    var variablesRegexpCode = '[?$]\\w+';
+    var whereClauseRegexp = new RegExp('where', 'i');
+    var whereClauseFound = false;
+    var inWhereClause = false;
+    var inWhereCounter = false;
+    var allVariables = [];
+    var whereVariables = [];
+
+    for (var i = 0; i < lineCount; i++) {
+        var currentString = contentLines[i];
+
+        if (whereClauseFound === false) {
+            if (whereClauseRegexp.test(currentString)) {
+                whereClauseFound = true;
+            }
+        }
+        if (whereClauseFound) {
+            currentString.indexOf('{') > -1 ? inWhereCounter++ : false;
+            currentString.indexOf('}') > -1 ? inWhereCounter-- : false;
+            if (inWhereCounter !== false) {
+                inWhereClause = true;
+            }
+        }
+
+        var lineVariables;
+        var lineVariablesRegexp = new RegExp(variablesRegexpCode, 'g');
+        while (lineVariables = lineVariablesRegexp.exec(currentString)) {
+            var variable = {
+                variable: lineVariables[0],
+                line: i,
+                startIndex: lineVariables.index,
+                endIndex: lineVariablesRegexp.lastIndex
+            };
+            allVariables.push(variable);
+            if (inWhereClause) {
+                whereVariables.push(variable);
+            }
+        }
+
+        if (inWhereCounter === 0) {
+            whereClauseFound = false;
+            inWhereClause = false;
+        }
+    }
+
+    allVariables = _.uniqBy(allVariables, 'variable');
+    whereVariables = _.uniqBy(whereVariables, 'variable');
+
+    return _.differenceBy(allVariables, whereVariables, 'variable');
+}

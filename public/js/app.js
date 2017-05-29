@@ -152,3 +152,39 @@ $(document).on('keydown', function(e){
         queryListManager.saveItem();
     }
 });
+
+markedUndefinedVariables = [];
+function markUndefinedVariables() {
+    var editorContent = editor.getValue();
+    var needUndefinedVariablesChecking = editorContent.search(/}/) > -1 && editorContent.search(/where/i) > -1;
+
+    if (markedUndefinedVariables.length) {
+        markedUndefinedVariables.forEach(function(mark) {
+            mark.clear();
+        });
+    }
+
+    if (needUndefinedVariablesChecking) {
+        var undefinedVariables = getUndefinedVariables(editor.getValue());
+        if (undefinedVariables.length) {
+            undefinedVariables.forEach(function(variable) {
+                var mark = editor.getDoc().markText({
+                    line: variable.line,
+                    ch: variable.startIndex
+                }, {
+                    line: variable.line,
+                    ch: variable.endIndex
+                }, {
+                    className: 'marked-text-error',
+                    title: 'Variable ' + variable.variable + ' is used in the query result set but not assigned'
+                });
+                markedUndefinedVariables.push(mark);
+            });
+        }
+    }
+}
+
+markUndefinedVariables();
+editor.on('change', function() {
+    markUndefinedVariables();
+});
