@@ -24,12 +24,14 @@ class QueryList {
         var className = "list-group-item " + (isNew ? 'not-saved'  : '');
 
         return "<a href='#' data-id='" + id + "' class='" + className + "'>" +
-            "<span class='queryTitle'>" + name + "</span>" +
-            "<span class='glyphicon glyphicon-pencil renameHistoryQuery' aria-hidden='true'>Rename</span>" +
-            "</a>" +
-            "<div class='querySettings'>" +
-            "<input type='text' class='form-control newQueryName' data-id='" + id + "' value='" + name + "' style='display: none;'>" +
-            "</div>";
+            "<div class='queryItemInfo'>" +
+                "<span class='queryTitle'>" + name + "</span>" +
+                "<span class='glyphicon glyphicon-pencil renameHistoryQuery' aria-hidden='true'>Rename</span>" +
+            "</div>" +
+            "<div class='querySettings' style='display: none;'>" +
+                "<input type='text' class='form-control newQueryName' data-id='" + id + "' value='" + name + "'>" +
+            "</div>" +
+            "</a>";
     }
 
     getSelectedId() {
@@ -56,8 +58,8 @@ class QueryList {
                     if (item) {
                         item.name = $(this).val();
                         queryList.repository.put(item);
-                        $(this).parent().prev('.list-group-item').find('.queryTitle').text($(this).val());
-                        $(this).slideToggle(100);
+                        $(this).closest('.list-group-item').find('.queryTitle').text($(this).val());
+                        $(this).parent('.querySettings').slideToggle(100);
                     } else {
                         console.warn('Selected item not found!');
                     }
@@ -71,9 +73,14 @@ class QueryList {
                 }
             };
         }
+
+        var queryList = this.element;
         this.element.on('click', '.renameHistoryQuery', function() {
-            var renameInput = $(this).parent().next('.querySettings').find('.newQueryName');
-            renameInput.slideToggle(100).focus();
+            var querySettings = $(this).closest('.list-group-item').find('.querySettings');
+            var renameInput = querySettings.find('.newQueryName');
+            querySettings.slideToggle(100);
+            queryList.find('.querySettings').not(querySettings).hide();
+            renameInput.focus();
         });
     }
 }

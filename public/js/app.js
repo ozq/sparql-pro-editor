@@ -184,7 +184,72 @@ function markUndefinedVariables() {
     }
 }
 
+markedVariablesWitoutParents = [];
+function markVariablesWithoutParents() {
+    var editorContent = editor.getValue();
+    var predicatesAndObjects = getAllPredicatesAndObjects(editorContent);
+    var contentLines = editorContent.split('\n');
+    var lineCount = contentLines.length;
+    var lineVariablesRegexp = new RegExp(variablesRegexpCode, 'g');
+    var variablesWithoutParents = [];
+    var inWhereClause = false;
+
+    if (markedVariablesWitoutParents.length) {
+        markedVariablesWitoutParents.forEach(function(mark) {
+            mark.clear();
+        });
+    }
+
+    for (var i = 0; i < lineCount; i++) {
+        var currentString = contentLines[i];
+
+        //TODO: this algorithm isn't consider nested SELECT/WHERE pairs
+        //TODO: some variables in nested SELECT clause will marked
+        if (inWhereClause === false) {
+            var whereClausePosition = currentString.search(/where/i);
+            if (whereClausePosition > -1) {
+                inWhereClause = true;
+                lineVariablesRegexp.lastIndex = whereClausePosition;
+            }
+        }
+
+        if (inWhereClause === true) {
+            var lineVariables = [];
+            while (lineVariables = lineVariablesRegexp.exec(currentString)) {
+                if (_.indexOf(predicatesAndObjects, lineVariables[0]) === -1) {
+                    var variable = {
+                        variable: lineVariables[0],
+                        line: i,
+                        startIndex: lineVariables.index,
+                        endIndex: lineVariablesRegexp.lastIndex
+                    };
+                    variablesWithoutParents.push(variable);
+                }
+            }
+        }
+    }
+
+    variablesWithoutParents.forEach(function(variable) {
+        if (editor.findMarksAt({line: variable.line, ch: variable.startIndex}).length === 0) {
+            var mark = editor.getDoc().markText({
+                line: variable.line,
+                ch: variable.startIndex
+            }, {
+                line: variable.line,
+                ch: variable.endIndex
+            }, {
+                className: 'marked-text-warning',
+                title: 'Variable ' + variable.variable + ' doesn\'t have parent. Check, that it is correct.'
+            });
+            markedVariablesWitoutParents.push(mark);
+        }
+    });
+}
+
+
 markUndefinedVariables();
+markVariablesWithoutParents();
 editor.on('change', function() {
     markUndefinedVariables();
+    markVariablesWithoutParents();
 });

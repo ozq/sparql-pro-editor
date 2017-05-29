@@ -32,9 +32,6 @@ button {
     border-radius: 0;
     flex-shrink: 0;
 }
-.query-list .list-group-item:last-child {
-    border-bottom: 0;
-}
 .query-list .list-group-item.not-saved .queryTitle:before {
     content: '*';
     color: #e74c3c;
@@ -59,11 +56,21 @@ button {
 
 .renameHistoryQuery {
     position: absolute;
-    right: 1em;
+    right: 0;
 }
 
 .newQueryName {
     margin-bottom: 5px;
+}
+
+.queryItemInfo {
+    width: 100%;
+    position: relative;
+}
+
+.querySettings {
+    margin-top: 1em;
+    width: 100%;
 }
 
 .system-text {
@@ -81,8 +88,11 @@ button {
 }
 
 .marked-text-error {
-    background-color : #e74c3c !important;
-    color: #fff !important;
-    z-index: -999;
-    font-weight: bold;
+    background-color : rgba(231,76,60, 0.4) !important;
+    z-index: -900;
+}
+
+.marked-text-warning {
+    background-color : rgba(243,156,18, 0.2) !important;
+    z-index: -900;
 }

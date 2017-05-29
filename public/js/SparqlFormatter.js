@@ -7,6 +7,7 @@ var singletonPropertyUri = '\<http://www.w3.org/1999/02/22-rdf-syntax-ns#singlet
 var allPrefixesRegexpCode = '[\\w]+(?=:(?!\\/\\/))';
 var excessLineRegexpCode = '(\\n\\s*){2}[^\\S\\t]';
 var allIndents = '^[\\t ]+(?![\\n])(?=[\\S])';
+var variablesRegexpCode = '[?$]\\w+';
 
 function beautifyCode(content, indentLength) {
     return correctBrackets(
@@ -216,18 +217,18 @@ function addSingletonProperties(content) {
 }
 
 function getUndefinedVariables(content) {
-    //TODO: this algorithm isn't consider nested SELECT/WHERE pairs [!!!]
+    //TODO: this algorithm isn't consider nested SELECT/WHERE pairs
 
     var contentLines = content.split('\n');
 
     var lineCount = contentLines.length;
-    var variablesRegexpCode = '[?$]\\w+';
     var whereClauseRegexp = new RegExp('where', 'i');
     var whereClauseFound = false;
     var inWhereClause = false;
     var inWhereCounter = false;
     var allVariables = [];
     var whereVariables = [];
+    var lineVariablesRegexp = new RegExp(variablesRegexpCode, 'g');
 
     for (var i = 0; i < lineCount; i++) {
         var currentString = contentLines[i];
@@ -246,7 +247,6 @@ function getUndefinedVariables(content) {
         }
 
         var lineVariables;
-        var lineVariablesRegexp = new RegExp(variablesRegexpCode, 'g');
         while (lineVariables = lineVariablesRegexp.exec(currentString)) {
             var variable = {
                 variable: lineVariables[0],
@@ -270,4 +270,24 @@ function getUndefinedVariables(content) {
     whereVariables = _.uniqBy(whereVariables, 'variable');
 
     return _.differenceBy(allVariables, whereVariables, 'variable');
+}
+
+function getAllPredicatesAndObjects(content) {
+    var predicatesAndObjects = [];
+    var excessWhitespacesRegexp = new RegExp('[\\s\.]*$', 'gm');
+    var tripleLines = content.match(new RegExp(tripleLineRegexpCode, 'g'));
+
+    if (tripleLines) {
+        var triples = tripleLines.map(function(triple) {
+            return triple.replace(excessWhitespacesRegexp, '');
+        });
+
+        triples.forEach(function(triple) {
+            var tripleParts = triple.split(/\s/g);
+            predicatesAndObjects.push(tripleParts[1]);
+            predicatesAndObjects.push(tripleParts[2]);
+        });
+    }
+
+    return _.uniq(predicatesAndObjects);
 }
