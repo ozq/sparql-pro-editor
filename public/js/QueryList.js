@@ -61,7 +61,16 @@ class QueryList {
                         $(this).closest('.list-group-item').find('.queryTitle').text($(this).val());
                         $(this).parent('.querySettings').slideToggle(100);
                     } else {
-                        console.warn('Selected item not found!');
+                        $.notify(
+                            '<strong>Selected item not found!</strong><br>',
+                            {
+                                type: 'warning',
+                                placement: {
+                                    from: 'bottom',
+                                    align: 'right'
+                                }
+                            }
+                        );
                     }
                 }
             });

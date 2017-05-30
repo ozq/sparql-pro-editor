@@ -143,6 +143,17 @@ $('#buttonShareQuery').click(function() {
     temp.val(sharedUrl).select();
     document.execCommand('copy');
     temp.remove();
+
+    $.notify(
+        '<strong>Link has copied to buffer.</strong><br>(' + sharedUrl + ')',
+        {
+            type: 'success',
+            placement: {
+                from: 'bottom',
+                align: 'right'
+            }
+        }
+    );
 });
 
 $(document).on('keydown', function(e){

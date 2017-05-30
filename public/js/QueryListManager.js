@@ -118,7 +118,16 @@ class QueryListManager {
                 });
                 queryList.element.fadeIn();
             } else {
-                console.warn('Selected item not found!');
+                $.notify(
+                    '<strong>Selected item not found!</strong><br>',
+                    {
+                        type: 'warning',
+                        placement: {
+                            from: 'bottom',
+                            align: 'right'
+                        }
+                    }
+                );
             }
         }
     }
@@ -135,7 +144,16 @@ class QueryListManager {
                 this.selectItem(queryList, selectingItem.data('id'));
             }
         } else {
-            console.warn('Selected item not found!');
+            $.notify(
+                '<strong>Selected item not found!</strong><br>',
+                {
+                    type: 'warning',
+                    placement: {
+                        from: 'bottom',
+                        align: 'right'
+                    }
+                }
+            );
         }
     }
 

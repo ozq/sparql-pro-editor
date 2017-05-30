@@ -118,7 +118,16 @@ class SparqlFormatter {
 
                 // Handle brackets nesting error
                 if (bracketsCounter > 0) {
-                    console.log('SPARQL syntax error, check brackets nesting.');
+                    $.notify(
+                        '<strong>SPARQL syntax error, check brackets nesting.</strong><br>',
+                        {
+                            type: 'warning',
+                            placement: {
+                                from: 'bottom',
+                                align: 'right'
+                            }
+                        }
+                    );
                     break;
                 }
             }
