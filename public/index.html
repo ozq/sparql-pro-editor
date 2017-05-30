@@ -127,6 +127,12 @@
             <button class="btn btn-secondary" type="button" id="buttonCompact">Compact URI</button>
             <button class="btn btn-secondary" type="button" id="buttonRemoveSingleton">Remove Singleton</button>
             <button class="btn btn-secondary" type="button" id="buttonAddSingleton">Add SingletonProperty</button>
+            <div class="form-inline-checkbox">
+                <label class="form-check-label">
+                    <input class="form-check-input" type="checkbox" id="buttonShowSpCompactedView">
+                    SP Compacted View
+                </label>
+            </div>
         </form>
     </div>
 </nav>
@@ -143,7 +149,10 @@
                     <button type="button" class="btn btn-secondary">Redo ></button>
                     <button type="button" class="btn btn-info" id="buttonShareQuery" data-ability="backend">Share</button>
                 </div>
-                <textarea id="yasqe" style="display: none;"></textarea>
+                <div class="editors">
+                    <textarea id="editor" style="display: none;"></textarea>
+                    <textarea id="editorCopy" style="display: none;"></textarea>
+                </div>
             </div>
             <!-- QUERY EXECUTION -->
             <div class="query-execution container-fluid">

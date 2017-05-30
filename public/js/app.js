@@ -31,6 +31,9 @@ if (appConfig.isBackendInstalled) {
     queryListManager.selectDefaultItem();
 }
 
+var sparqlFormatter = new SparqlFormatter({
+    indentLength: editor.indentLength
+});
 
 function getQueryPrefixes() {
     return editor.getPrefixesFromQuery();
@@ -66,19 +69,20 @@ $('#buttonSaveSharedQuery').click(function() {
 });
 
 $('#buttonBeautify').click(function() {
-    editor.setValue(beautifyCode(editor.getValue(), editor.options.indentUnit));
+    var beautifiedContent = sparqlFormatter.beautify(editor.getValue());
+    editor.setValue(beautifiedContent);
 });
 $('#buttonRemoveMinus').click(function() {
-    var contentWithoutMinus = removeAllOperatorsByName(editor.getValue(), 'minus');
-    editor.setValue(beautifyCode(contentWithoutMinus, editor.options.indentUnit));
+    var contentWithoutMinus = sparqlFormatter.removeAllOperatorsByName(editor.getValue(), 'minus');
+    editor.setValue(contentWithoutMinus);
 });
 $('#buttonExpand').click(function() {
-    var replacedContent = expandUri(editor.getValue(), getAllPrefixes());
-    editor.setValue(replacedContent);
+    var expandedUriContent = sparqlFormatter.expandUri(editor.getValue(), getAllPrefixes());
+    editor.setValue(expandedUriContent);
 });
 $('#buttonCompact').click(function() {
-    var replacedContent = compactUri(editor.getValue(), getAllPrefixes());
-    editor.setValue(replacedContent);
+    var compactedUriContent = sparqlFormatter.compactUri(editor.getValue(), getAllPrefixes());
+    editor.setValue(compactedUriContent);
 });
 
 $('#buttonClearCommonPrefixes').click(function() {
@@ -101,7 +105,7 @@ $('#buttonCancelQueryLeaving').click(function() {
 });
 
 $('#buttonRemoveSingleton').click(function () {
-    var removeSingletonResult = removeSingletonProperties(editor.getValue());
+    var removeSingletonResult = sparqlFormatter.removeSingletonProperties(editor.getValue());
 
     if (removeSingletonResult.deleted_uri.length > 0) {
         localStorage.setItem('spe.contentWithoutSingleton', removeSingletonResult.result);
@@ -109,21 +113,15 @@ $('#buttonRemoveSingleton').click(function () {
         confirmationElement.find('.uri-list').text(removeSingletonResult.deleted_uri);
         confirmationElement.modal('show');
     } else {
-        //TODO: обойтись одним setter'ом
         editor.setValue(removeSingletonResult.result);
-        editor.setValue(beautifyCode(editor.getValue(), editor.options.indentUnit));
     }
 });
 $('#buttonDeleteSpUri').click(function () {
-    //TODO: обойтись одним setter'ом
-    editor.setValue(localStorage.getItem('spe.contentWithoutSingleton'));
-    editor.setValue(beautifyCode(editor.getValue(), editor.options.indentUnit));
+    editor.setValue(sparqlFormatter.beautify(localStorage.getItem('spe.contentWithoutSingleton')));
 });
 $('#buttonAddSingleton').click(function() {
-    var addSingletonResult = addSingletonProperties(editor.getValue());
-    //TODO: обойтись одним setter'ом
+    var addSingletonResult = sparqlFormatter.addSingletonProperties(editor.getValue());
     editor.setValue(addSingletonResult);
-    editor.setValue(beautifyCode(editor.getValue(), editor.options.indentUnit));
 });
 
 $('#buttonShowQueryResult').click(function() {
@@ -165,7 +163,7 @@ function markUndefinedVariables() {
     }
 
     if (needUndefinedVariablesChecking) {
-        var undefinedVariables = getUndefinedVariables(editor.getValue());
+        var undefinedVariables = sparqlFormatter.getUndefinedVariables(editor.getValue());
         if (undefinedVariables.length) {
             undefinedVariables.forEach(function(variable) {
                 var mark = editor.getDoc().markText({
@@ -187,10 +185,10 @@ function markUndefinedVariables() {
 markedVariablesWitoutParents = [];
 function markVariablesWithoutParents() {
     var editorContent = editor.getValue();
-    var predicatesAndObjects = getAllPredicatesAndObjects(editorContent);
+    var predicatesAndObjects = sparqlFormatter.getAllPredicatesAndObjects(editorContent);
     var contentLines = editorContent.split('\n');
     var lineCount = contentLines.length;
-    var lineVariablesRegexp = new RegExp(variablesRegexpCode, 'g');
+    var lineVariablesRegexp = new RegExp(sparqlFormatter.variablesRegexpCode, 'g');
     var variablesWithoutParents = [];
     var inWhereClause = false;
 
@@ -246,10 +244,84 @@ function markVariablesWithoutParents() {
     });
 }
 
-
 markUndefinedVariables();
 markVariablesWithoutParents();
 editor.on('change', function() {
     markUndefinedVariables();
     markVariablesWithoutParents();
+});
+
+function toggleEditorCopy(showCopy) {
+    if (showCopy) {
+        $('.editors .yasqe:last-child').css('z-index', '2');
+        $('.editors .yasqe:first-child').css('z-index', '1');
+    } else {
+        editorCopy.setValue(editor.getValue());
+        $('.editors .yasqe:last-child').css('z-index', '1');
+        $('.editors .yasqe:first-child').css('z-index', '2');
+    }
+}
+
+markedReplacedSingletonPoperites = [];
+function showSpCompactedView() {
+    markedReplacedSingletonPoperites = [];
+    // Remove sp properties
+    var removeSingletonResult = sparqlFormatter.removeSingletonProperties(editorCopy.getValue(), true);
+    editorCopy.setValue(removeSingletonResult.result);
+
+    // Add marks
+    var replacedVariables = removeSingletonResult.replaced_variables;
+    if (replacedVariables.length) {
+        var contentLines = editorCopy.getValue().split('\n');
+        var lineCount = contentLines.length;
+        var predicates;
+
+        var replacedVariablesMarks = [];
+        for (var i = 0; i < lineCount; i++) {
+            var currentString = contentLines[i];
+            var matchingReplacedVariable = replacedVariables[0];
+
+            if (matchingReplacedVariable) {
+                var predicateRegexp = new RegExp(matchingReplacedVariable.predicate, 'gi');
+                var isPredicateFound = false;
+
+                while (predicates = predicateRegexp.exec(currentString)) {
+                    var replacedVariableMark = {
+                        variable: matchingReplacedVariable.variable,
+                        line: i,
+                        startIndex: predicates.index,
+                        endIndex: predicateRegexp.lastIndex
+                    };
+                    replacedVariablesMarks.push(replacedVariableMark);
+                    isPredicateFound = true;
+                }
+
+                if (isPredicateFound) {
+                    replacedVariables = _.drop(replacedVariables);
+                }
+            }
+        }
+
+        replacedVariablesMarks.forEach(function (markItem) {
+            var mark = editorCopy.getDoc().markText({
+                line: markItem.line,
+                ch: markItem.startIndex
+            }, {
+                line: markItem.line,
+                ch: markItem.endIndex
+            }, {
+                className: 'marked-text-info',
+                title: markItem.variable
+            });
+            markedReplacedSingletonPoperites.push(mark);
+        });
+    }
+}
+
+$('#buttonShowSpCompactedView').click(function() {
+    var isChecked = $(this).is(':checked');
+    if (isChecked) {
+        showSpCompactedView();
+    }
+    toggleEditorCopy(isChecked);
 });

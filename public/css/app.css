@@ -91,8 +91,35 @@ button {
     background-color : rgba(231,76,60, 0.4) !important;
     z-index: -900;
 }
-
 .marked-text-warning {
     background-color : rgba(243,156,18, 0.2) !important;
     z-index: -900;
+}
+.marked-text-info {
+    background-color : rgba(41,128,185, 0.2) !important;
+    z-index: -900;
+}
+
+.form-inline-checkbox {
+    display: flex;
+    align-items: center;
+    background: #FFF;
+    padding-left: 15px;
+    padding-right: 15px;
+    border: solid 1px #ccc;
+}
+
+.editors {
+    height: 33em;
+    position: relative;
+}
+.editors .yasqe {
+    position: absolute;
+    width: 100%;
+}
+.editors .yasqe:first-child {
+    z-index: 2;
+}
+.editors .yasqe:last-child {
+    z-index: 1;
 }

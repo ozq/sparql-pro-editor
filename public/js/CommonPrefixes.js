@@ -36,8 +36,9 @@ function initCommonPrefixesData() {
 }
 
 editor.on('change', function(editor) {
+    var sparqlFormatter = new SparqlFormatter();
     var definedQueryPrefixes = Object.keys(editor.getPrefixesFromQuery());
-    var allQueryPrefixes = _.uniq(editor.getValue().match(new RegExp(allPrefixesRegexpCode, 'gi')));
+    var allQueryPrefixes = _.uniq(editor.getValue().match(new RegExp(sparqlFormatter.allPrefixesRegexpCode, 'gi')));
     var queryUndefinedPrefixes = _.difference(allQueryPrefixes, definedQueryPrefixes);
     var commonPrefixes = getCommonPrefixesArray();
     var newQueryPrefixes = {};
