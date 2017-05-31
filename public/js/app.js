@@ -287,28 +287,39 @@ function showSpCompactedView() {
         var lineCount = contentLines.length;
         var predicates;
 
+        var afterSelectClause = false;
         var replacedVariablesMarks = [];
         for (var i = 0; i < lineCount; i++) {
             var currentString = contentLines[i];
             var matchingReplacedVariable = replacedVariables[0];
 
+            var openedOperatorRegexp = new RegExp('\{', 'i');
             if (matchingReplacedVariable) {
-                var predicateRegexp = new RegExp(matchingReplacedVariable.predicate, 'gi');
-                var isPredicateFound = false;
-
-                while (predicates = predicateRegexp.exec(currentString)) {
-                    var replacedVariableMark = {
-                        variable: matchingReplacedVariable.variable,
-                        line: i,
-                        startIndex: predicates.index,
-                        endIndex: predicateRegexp.lastIndex
-                    };
-                    replacedVariablesMarks.push(replacedVariableMark);
-                    isPredicateFound = true;
+                //TODO: simplified after select-clause checking!
+                if (!afterSelectClause) {
+                    if (openedOperatorRegexp.test(currentString)) {
+                        afterSelectClause = true;
+                    }
                 }
 
-                if (isPredicateFound) {
-                    replacedVariables = _.drop(replacedVariables);
+                if (afterSelectClause) {
+                    var predicateRegexp = new RegExp(_.escapeRegExp(matchingReplacedVariable.predicate), 'gi');
+                    var isPredicateFound = false;
+
+                    while (predicates = predicateRegexp.exec(currentString)) {
+                        var replacedVariableMark = {
+                            variable: matchingReplacedVariable.variable,
+                            line: i,
+                            startIndex: predicates.index,
+                            endIndex: predicateRegexp.lastIndex
+                        };
+                        replacedVariablesMarks.push(replacedVariableMark);
+                        isPredicateFound = true;
+                    }
+
+                    if (isPredicateFound) {
+                        replacedVariables = _.drop(replacedVariables);
+                    }
                 }
             }
         }
