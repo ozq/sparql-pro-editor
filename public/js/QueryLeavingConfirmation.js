@@ -1,13 +1,15 @@
-var QueryLeavingConfirmation = new function() {
-    this.element = $('#queryLeavingConfirmation');
+class QueryLeavingConfirmation {
+    constructor(element) {
+        this.element = $(element);
+    }
 
-    this.show = function (leavingQueryId, nextQueryId) {
+    show(leavingQueryId, nextQueryId) {
         this.element.modal('show');
         this.element.find('input[name="leavingQueryId"]').val(leavingQueryId);
         this.element.find('input[name="nextQueryId"]').val(nextQueryId);
     };
 
-    this.getNextQueryId = function () {
+    getNextQueryId() {
         return this.element.find('input[name="nextQueryId"]').val();
     }
-};
+}

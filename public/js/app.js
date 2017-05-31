@@ -1,21 +1,20 @@
-initCommonPrefixesData();
 var queryExectuionForm = new QueryExecutionForm('#formExecuteQuery', '#selectQuerySettings', new QuerySettingsRepository());
-
-var queryListManager = new QueryListManager();
-var localQueryList = new QueryList('#local-query-list', new QueriesLocalRepository(), editor);
+var queryHistoryLocalRepository = new QueryHistoryLocalRepository();
+var queryLeavingConfirmation = new QueryLeavingConfirmation('#queryLeavingConfirmation');
+var commonPrefixes = new CommonPrefixes(editor);
+var sparqlFormatter = new SparqlFormatter({
+    indentLength: editor.indentLength
+});
+var queryListManager = new QueryListManager(queryLeavingConfirmation);
+var localQueryList = new QueryList('#local-query-list', new QueriesLocalRepository(queryHistoryLocalRepository), editor);
 queryListManager.manage(localQueryList);
 if (appConfig.isBackendInstalled) {
-    var sharedQueryList = new QueryList('#shared-query-list', new QueriesSharedRepository(), editor);
+    var sharedQueryList = new SharedQueryList('#shared-query-list', new QueriesSharedRepository(queryHistoryLocalRepository), editor);
     queryListManager.manage(sharedQueryList);
 }
 
 if (appConfig.isBackendInstalled) {
-    $.urlParam = function(name) {
-        var results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
-        return results ? results[1] || 0 : null;
-    };
-    var sharedQueryId = $.urlParam('sharedQueryId');
-    var sharedQuery = sharedQueryList.repository.get(sharedQueryId);
+    var sharedQuery = sharedQueryList.repository.get(QueryShare.getSharedQueryId());
     if (sharedQuery) {
         var listItem = queryListManager.getListElementById(sharedQueryList, sharedQuery.id);
         if (listItem) {
@@ -31,20 +30,9 @@ if (appConfig.isBackendInstalled) {
     queryListManager.selectDefaultItem();
 }
 
-var sparqlFormatter = new SparqlFormatter({
-    indentLength: editor.indentLength
-});
-
-function getQueryPrefixes() {
-    return editor.getPrefixesFromQuery();
-}
-
-function getAllPrefixes() {
-    return Object.assign({}, getCommonPrefixesArray(), getQueryPrefixes());
-}
-
 if (!appConfig.isBackendInstalled) {
     $('[data-ability=backend]').attr('disabled', 'disabled').attr('title', 'This function available only on full version');
+    $('#shared-query-list').hide();
 }
 
 $('#buttonAddLocalQuery').click(function() {
@@ -55,14 +43,14 @@ $('#buttonAddLocalQuery').click(function() {
     queryListManager.selectItem(localQueryList, newItemId);
 });
 $('#buttonDeleteLocalQuery').click(function() {
-    queryListManager.deleteItem(localQueryList, localQueryList.getSelectedId());
+    queryListManager.deleteItem(localQueryList, localQueryList.getActiveItemId());
 });
 $('#buttonSaveLocalQuery').click(function() {
     queryListManager.saveItem(localQueryList);
 });
 
 $('#buttonDeleteSharedQuery').click(function() {
-    queryListManager.deleteItem(sharedQueryList, sharedQueryList.getSelectedId());
+    queryListManager.deleteItem(sharedQueryList, sharedQueryList.getActiveItemId());
 });
 $('#buttonSaveSharedQuery').click(function() {
     queryListManager.saveItem(sharedQueryList)
@@ -76,6 +64,10 @@ $('#buttonRemoveMinus').click(function() {
     var contentWithoutMinus = sparqlFormatter.removeAllOperatorsByName(editor.getValue(), 'minus');
     editor.setValue(contentWithoutMinus);
 });
+
+function getAllPrefixes() {
+    return Object.assign({}, commonPrefixes.getArray(), editor.getPrefixesFromQuery());
+}
 $('#buttonExpand').click(function() {
     var expandedUriContent = sparqlFormatter.expandUri(editor.getValue(), getAllPrefixes());
     editor.setValue(expandedUriContent);
@@ -85,20 +77,28 @@ $('#buttonCompact').click(function() {
     editor.setValue(compactedUriContent);
 });
 
+$('#buttonShowSpCompactedView').click(function() {
+    var isChecked = $(this).is(':checked');
+    if (isChecked) {
+        showSpCompactedView();
+    }
+    toggleEditorCopy(isChecked);
+});
+
 $('#buttonClearCommonPrefixes').click(function() {
-    getCommonPrefixesTextArea().value = '';
-    setCommonPrefixesData('');
+    commonPrefixes.getTextArea().value = '';
+    commonPrefixes.setData('');
 });
 $('#buttonSaveCommonPrefixes').click(function() {
-    setCommonPrefixesData(getCommonPrefixesTextArea().value.split('\n'));
+    commonPrefixes.setData(commonPrefixes.getTextArea().value.split('\n'));
 });
 
 $('#buttonSaveAndLeaveCurrentQuery').click(function() {
     queryListManager.saveItem();
-    queryListManager.selectItem(null, QueryLeavingConfirmation.getNextQueryId());
+    queryListManager.selectItem(null, queryLeavingConfirmation.getNextQueryId());
 });
 $('#buttonLeaveCurrentQuery').click(function() {
-    queryListManager.selectItem(null, QueryLeavingConfirmation.getNextQueryId(), true);
+    queryListManager.selectItem(null, queryLeavingConfirmation.getNextQueryId(), true);
 });
 $('#buttonCancelQueryLeaving').click(function() {
     return true;
@@ -117,7 +117,7 @@ $('#buttonRemoveSingleton').click(function () {
     }
 });
 $('#buttonDeleteSpUri').click(function () {
-    editor.setValue(sparqlFormatter.beautify(localStorage.getItem('spe.contentWithoutSingleton')));
+    editor.setValue(localStorage.getItem('spe.contentWithoutSingleton'));
 });
 $('#buttonAddSingleton').click(function() {
     var addSingletonResult = sparqlFormatter.addSingletonProperties(editor.getValue());
@@ -137,23 +137,7 @@ $('#buttonShareQuery').click(function() {
     };
     var sharedQueryId = queryListManager.addItem(sharedQueryList, item);
 
-    var temp = $('<input>');
-    $('body').append(temp);
-    var sharedUrl = window.location.origin + window.location.pathname + '?' + $.param({sharedQueryId: sharedQueryId});
-    temp.val(sharedUrl).select();
-    document.execCommand('copy');
-    temp.remove();
-
-    $.notify(
-        '<strong>Link has copied to buffer.</strong><br>(' + sharedUrl + ')',
-        {
-            type: 'success',
-            placement: {
-                from: 'bottom',
-                align: 'right'
-            }
-        }
-    );
+    QueryShare.share(sharedQueryId);
 });
 
 $(document).on('keydown', function(e){
@@ -339,11 +323,3 @@ function showSpCompactedView() {
         });
     }
 }
-
-$('#buttonShowSpCompactedView').click(function() {
-    var isChecked = $(this).is(':checked');
-    if (isChecked) {
-        showSpCompactedView();
-    }
-    toggleEditorCopy(isChecked);
-});

@@ -32,7 +32,7 @@ button {
     border-radius: 0;
     flex-shrink: 0;
 }
-.query-list .list-group-item.not-saved .queryTitle:before {
+.query-item.not-saved .query-item_title:before {
     content: '*';
     color: #e74c3c;
     margin-right: 1em;
@@ -52,25 +52,6 @@ button {
 .common-prefixes-textarea {
     height: 10em;
     font-size: 0.8rem;
-}
-
-.renameHistoryQuery {
-    position: absolute;
-    right: 0;
-}
-
-.newQueryName {
-    margin-bottom: 5px;
-}
-
-.queryItemInfo {
-    width: 100%;
-    position: relative;
-}
-
-.querySettings {
-    margin-top: 1em;
-    width: 100%;
 }
 
 .system-text {
@@ -122,4 +103,36 @@ button {
 }
 .editors .yasqe:last-child {
     z-index: 1;
+}
+
+.query-item_buttons {
+    position: absolute;
+    top: 0;
+    right: 0;
+}
+.query-item_buttons i {
+    margin-right: 10px;
+}
+.query-item_buttons i:last-child {
+    margin-right: 0;
+}
+.query-item_info {
+    width: 100%;
+    position: relative;
+}
+.newQueryName {
+    margin-bottom: 5px;
+}
+.query-item_rename {
+    margin-top: 1em;
+    width: 100%;
+}
+.query-item_history {
+    margin-top: 1em;
+    width: 100%;
+}
+.query-item_history .list-group-item {
+    color: #666;
+    font-size: 0.9rem;
+    padding: 0.2em 1em;
 }

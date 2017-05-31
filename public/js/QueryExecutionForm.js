@@ -3,13 +3,14 @@ class QueryExecutionForm {
         this.form = $(form);
         this.querySettingsList = $(querySettingsList);
         this.querySettingsRepository = querySettingsRepository;
+        this.key = 'spe.queryExecutionFormData';
         this.buildForm();
         this.initListeners();
     };
 
     buildForm() {
         this.buildQuerySettingsList();
-        this.fillForm(JSON.parse(localStorage.getItem('spe.queryExecutionFormData')));
+        this.fillForm(JSON.parse(localStorage.getItem(this.key)));
     }
 
     fillForm(parameters) {
@@ -25,18 +26,18 @@ class QueryExecutionForm {
     }
 
     buildQuerySettingsList() {
-        var form = this;
+        var thisObject = this;
         var querySettingsItems = this.querySettingsRepository.getAll();
 
-        form.querySettingsList.html('');
+        thisObject.querySettingsList.html('');
         querySettingsItems.forEach(function(querySettings) {
             var selectItemText = querySettings.endpoint + ' (' + querySettings.default_graph_uri + ')';
-            form.querySettingsList.append($('<option></option>').attr('value', querySettings.id).text(selectItemText));
+            thisObject.querySettingsList.append($('<option></option>').attr('value', querySettings.id).text(selectItemText));
         });
     }
 
     initListeners() {
-        var form = this;
+        var thisObject = this;
         this.form.submit(function(e) {
             e.preventDefault();
 
@@ -45,12 +46,12 @@ class QueryExecutionForm {
             var graphUri = $(this).find('input[name="default_graph_uri"]').val();
 
             // Save form data
-            localStorage.setItem('spe.queryExecutionFormData', JSON.stringify($(this).serializeArray()));
-            form.querySettingsRepository.add({
+            localStorage.setItem(this.key, JSON.stringify($(this).serializeArray()));
+            thisObject.querySettingsRepository.add({
                 'default_graph_uri': graphUri,
                 'endpoint': endpoint
             });
-            form.buildQuerySettingsList();
+            thisObject.buildQuerySettingsList();
 
             // Build request parameters
             var parameters = {
@@ -93,7 +94,7 @@ class QueryExecutionForm {
 
         this.querySettingsList.change(function(e) {
             var parameters = [];
-            var selectedQuerySettings = form.querySettingsRepository.get($(this).val());
+            var selectedQuerySettings = thisObject.querySettingsRepository.get($(this).val());
 
             if (selectedQuerySettings) {
                 Object.keys(selectedQuerySettings).forEach(function(key) {
@@ -102,7 +103,7 @@ class QueryExecutionForm {
                         value: selectedQuerySettings[key]
                     });
                 });
-                form.fillForm(parameters);
+                thisObject.fillForm(parameters);
             }
         });
     }

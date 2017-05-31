@@ -1,11 +1,12 @@
 class QueryListManager {
-    constructor() {
-        this.key = 'spe';
+    constructor(queryLeavingConfirmation) {
+        this.key = 'spe.';
         this.queryLists = [];
+        this.queryLeavingConfirmation = queryLeavingConfirmation;
     };
 
     selectDefaultItem() {
-        var manager = this;
+        var thisObject = this;
         var queryLists = this.queryLists;
         var defaultSelectedItem = this.getSelectedItem();
 
@@ -21,7 +22,7 @@ class QueryListManager {
             var queryList = queryLists[key];
             var queryListItems = queryList.repository.getAll();
             if (queryListItems) {
-                manager.selectItem(queryList, queryListItems[0].id);
+                thisObject.selectItem(queryList, queryListItems[0].id);
                 break;
             }
         }
@@ -48,7 +49,7 @@ class QueryListManager {
         } else {
             if (leavingQuery.length) {
                 if (leavingQuery.hasClass('not-saved')) {
-                    QueryLeavingConfirmation.show(leavingQuery.data('id'), clickedQuery.id);
+                    this.queryLeavingConfirmation.show(leavingQuery.data('id'), clickedQuery.id);
                     return;
                 }
             }
@@ -84,6 +85,12 @@ class QueryListManager {
         }
     }
 
+    selectHistoryItem(queryList, id) {
+        var historyItem = queryList.repository.historyRepository.get(id);
+        queryList.editor.setValue(historyItem.query);
+        queryList.element.find('.list-group-item').removeClass('not-saved');
+    }
+
     saveItem(queryList) {
         var queryLists = this.queryLists;
         var selectedListItem = $('.query-list').find('.list-group-item.active');
@@ -108,14 +115,19 @@ class QueryListManager {
                 queryList.repository.put(selectedItem);
                 queryList.element.find(".list-group-item[data-id='" + selectedId + "']").removeClass('not-saved');
 
-                var allItems = queryList.element.find('.list-group-item').not('.active');
+                // Save query history
+                var savedHistoryItem = queryList.repository.addHistory(selectedItem);
+                // Rebuild history
+                this.pushHistoryItem(savedHistoryItem, queryList, selectedListItem);
 
                 // Rebuild list (last updated items)
+                var allItems = queryList.element.find('.list-group-item.query-item').not('.active');
                 queryList.element.html('');
                 allItems.splice(0, 0, selectedListItem);
                 $.each(allItems, function(i, item) {
                     queryList.element.append(item);
                 });
+
                 queryList.element.fadeIn();
             } else {
                 $.notify(
@@ -132,11 +144,20 @@ class QueryListManager {
         }
     }
 
+    pushHistoryItem(item, queryList, selectedListItem) {
+        var savedHistoryElement = queryList.buildQueryHistoryItem(item);
+        var allHistoryItems = selectedListItem.find('.query-item_history .list-group-item.history-item');
+        var historyElement = selectedListItem.find('.query-item_history .list-group');
+        historyElement.html('');
+        allHistoryItems.splice(0, 0, $.parseHTML(savedHistoryElement)[0]);
+        historyElement.html(allHistoryItems.slice(0, queryList.repository.historyRepository.maxItemsCount));
+    }
+
     deleteItem(queryList, id) {
         if (id) {
             queryList.repository.remove(id);
             var selectedItem = queryList.element.find(".list-group-item[data-id='" + id + "']");
-            selectedItem.next('.querySettings').remove();
+            queryList.repository.clearHistoryByQueryId(selectedItem.data('id'));
             selectedItem.remove();
             queryList.editor.setValue('');
             var selectingItem = queryList.element.find(".list-group-item").first();
@@ -171,7 +192,7 @@ class QueryListManager {
             repository: repository,
             id: id
         };
-        localStorage.setItem(this.key + '.selectedQueryItem', JSON.stringify(selectedItem));
+        localStorage.setItem(this.key + 'selectedQueryItem', JSON.stringify(selectedItem));
     };
 
     getListElementById(queryList, id) {
@@ -179,21 +200,24 @@ class QueryListManager {
     }
 
     getSelectedItem() {
-        return JSON.parse(localStorage.getItem(this.key + '.selectedQueryItem'));
+        return JSON.parse(localStorage.getItem(this.key + 'selectedQueryItem'));
     };
 
     getSelectedItemName() {
-        return $('.query-list').find('.list-group-item.active .queryTitle').text();
+        return $('.query-list').find('.list-group-item.active .query-item_title').text();
     }
 
     manage(queryList) {
         var repositoryName = queryList.repository.constructor.name;
         this.queryLists[repositoryName] = queryList;
-        var manager = this;
-        queryList.element.on('click', '.list-group-item', function() {
+        var thisObject = this;
+        queryList.element.on('click', '.query-item.list-group-item', function() {
             if (!$(this).hasClass('active')) {
-                manager.selectItem(queryList, $(this).data('id'));
+                thisObject.selectItem(queryList, $(this).data('id'));
             }
+        });
+        queryList.element.on('click', '.history-item.list-group-item', function() {
+            thisObject.selectHistoryItem(queryList, $(this).data('id'));
         });
     };
 }

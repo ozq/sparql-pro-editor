@@ -1,5 +1,6 @@
-class QueriesSharedRepository {
-    constructor() {
+class QueriesSharedRepository extends QueryRepository {
+    constructor(historyRepository) {
+        super(historyRepository);
         this.endpoint = 'api/v1/sharedQuery';
     };
 

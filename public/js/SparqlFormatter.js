@@ -222,7 +222,7 @@ class SparqlFormatter {
         var tripleElementsRegexp = new RegExp(this.tripleElementsRegexpCode, 'gi');
         var singletonPropertyNumber = 0;
         var replaceStartPosition = content.search('WHERE');
-        var formatter = this;
+        var thisObject = this;
 
         var result = content.replace(tripleLineRegexp, function(triple, offset) {
             if (offset < replaceStartPosition) {
@@ -237,7 +237,7 @@ class SparqlFormatter {
 
             // Build triple with singleton property
             return triplePairElements[0] + ' ' + singletonProperty + ' ' + triplePairElements[2] + '.\r\n' +
-                singletonProperty + ' ' + formatter.singletonPropertyUri + ' ' + triplePairElements[1] + '.\r\n';
+                singletonProperty + ' ' + thisObject.singletonPropertyUri + ' ' + triplePairElements[1] + '.\r\n';
         });
 
         return this.beautify(result);
