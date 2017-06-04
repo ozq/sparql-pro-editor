@@ -65,7 +65,7 @@ button {
     width: 100%;
     border: none;
     min-height: 550px;
-    overflow-y: scroll;
+    overflow: scroll;
 }
 
 .marked-text-error {
