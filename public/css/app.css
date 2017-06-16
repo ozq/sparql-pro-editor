@@ -1,0 +1,138 @@
+.CodeMirror {
+    height: 40em !important;
+}
+
+button {
+    cursor: pointer;
+}
+
+.toolbar {
+    background-color: #2980b9;
+}
+
+.sparql-editor-wrapper {
+    margin-bottom: 1em;
+}
+
+.sidebar-wrapper {
+    margin-bottom: 1em;
+}
+
+.query-buttons {
+    float: right;
+}
+
+.query-list {
+    height: 15em;
+    overflow-x: hidden;
+    overflow-y: scroll;
+    border: 1px solid rgba(0,0,0,.125);
+}
+.query-list .list-group-item {
+    border-radius: 0;
+    flex-shrink: 0;
+}
+.query-item.not-saved .query-item_title:before {
+    content: '*';
+    color: #e74c3c;
+    margin-right: 1em;
+    font-weight: bold;
+}
+
+.common-prefixes {
+    margin-top: 1.5em;
+}
+
+.sidebar-item {
+    margin-bottom: 1.5em;
+}
+.sidebar-item_buttons {
+    margin-bottom: 0.5em;
+}
+.common-prefixes-textarea {
+    height: 10em;
+    font-size: 0.8rem;
+}
+
+.system-text {
+    font-size: 0.8rem;
+    margin: 0.1em 0 1em;
+    color: #666;
+    font-weight: 700;
+}
+
+.query-execution-result_response {
+    width: 100%;
+    border: none;
+    min-height: 550px;
+    overflow: scroll;
+}
+
+.marked-text-error {
+    background-color : rgba(231,76,60, 0.4) !important;
+    z-index: -900;
+}
+.marked-text-warning {
+    background-color : rgba(243,156,18, 0.2) !important;
+    z-index: -900;
+}
+.marked-text-info {
+    background-color : rgba(41,128,185, 0.2) !important;
+    z-index: -900;
+}
+
+.form-inline-checkbox {
+    display: flex;
+    align-items: center;
+    background: #FFF;
+    padding-left: 15px;
+    padding-right: 15px;
+    border: solid 1px #ccc;
+}
+
+.editors {
+    height: 33em;
+    position: relative;
+}
+.editors .yasqe {
+    position: absolute;
+    width: 100%;
+}
+.editors .yasqe:first-child {
+    z-index: 2;
+}
+.editors .yasqe:last-child {
+    z-index: 1;
+}
+
+.query-item_buttons {
+    position: absolute;
+    top: 0;
+    right: 0;
+}
+.query-item_buttons i {
+    margin-right: 10px;
+}
+.query-item_buttons i:last-child {
+    margin-right: 0;
+}
+.query-item_info {
+    width: 100%;
+    position: relative;
+}
+.newQueryName {
+    margin-bottom: 5px;
+}
+.query-item_rename {
+    margin-top: 1em;
+    width: 100%;
+}
+.query-item_history {
+    margin-top: 1em;
+    width: 100%;
+}
+.query-item_history .list-group-item {
+    color: #666;
+    font-size: 0.9rem;
+    padding: 0.2em 1em;
+}

@@ -1,0 +1,65 @@
+version: '2'
+services:
+
+  # APPLICATION
+  app:
+    build:
+      context: ./
+      dockerfile: app.dockerfile
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+    environment:
+      - DB_PORT=3306
+      - DB_HOST=db
+    links:
+      - db:db
+
+  # WEB SERVER
+  web:
+    build:
+      context: ./
+      dockerfile: web.dockerfile
+    working_dir: /var/www
+    volumes_from:
+      - app
+    ports:
+      - 80:80
+    links:
+      - app:app
+
+  # DATABASE
+  db:
+    image: mysql:5.7
+    restart: always
+    volumes:
+      - dbdata:/var/lib/mysql
+    environment:
+      - MYSQL_DATABASE=sparql
+      - MYSQL_USER=admin
+      - MYSQL_PASSWORD=admin
+      - MYSQL_ROOT_PASSWORD=admin
+    ports:
+      - 33061:3306
+
+  # COMPOSER
+  composer:
+    restart: 'no'
+    image: composer/composer
+    working_dir: /var/www
+    volumes_from:
+      - app
+    command: install
+
+  # CLIENT BUILDER
+  client-builder:
+    build:
+      context: ./
+      dockerfile: node.dockerfile
+    working_dir: /var/www
+    volumes_from:
+      - app
+    command: bash -c 'bower install --allow-root'
+
+volumes:
+  dbdata:

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+
+    <title>SPARQL Pro Editor</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+    <meta name="theme-color" content="#2980b9">
+    <meta name="msapplication-navbutton-color" content="#2980b9">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#2980b9">
+
+    <!-- FAVICON -->
+    <!-- generated here: http://www.favicon-generator.org/ -->
+    <link rel="apple-touch-icon" sizes="57x57" href="images/favicon/apple-icon-57x57.png"/>
+    <link rel="apple-touch-icon" sizes="60x60" href="images/favicon/apple-icon-60x60.png"/>
+    <link rel="apple-touch-icon" sizes="72x72" href="images/favicon/apple-icon-72x72.png"/>
+    <link rel="apple-touch-icon" sizes="76x76" href="images/favicon/apple-icon-76x76.png"/>
+    <link rel="apple-touch-icon" sizes="114x114" href="images/favicon/apple-icon-114x114.png"/>
+    <link rel="apple-touch-icon" sizes="120x120" href="images/favicon/apple-icon-120x120.png"/>
+    <link rel="apple-touch-icon" sizes="144x144" href="images/favicon/apple-icon-144x144.png"/>
+    <link rel="apple-touch-icon" sizes="152x152" href="images/favicon/apple-icon-152x152.png"/>
+    <link rel="apple-touch-icon" sizes="180x180" href="images/favicon/apple-icon-180x180.png"/>
+    <link rel="icon" type="image/png" sizes="192x192"  href="images/favicon/android-icon-192x192.png"/>
+    <link rel="icon" type="image/png" sizes="32x32" href="images/favicon/favicon-32x32.png"/>
+    <link rel="icon" type="image/png" sizes="96x96" href="images/favicon/favicon-96x96.png"/>
+    <link rel="icon" type="image/png" sizes="16x16" href="images/favicon/favicon-16x16.png"/>
+    <link rel="manifest" href="images/favicon/manifest.json"/>
+
+    <link rel="stylesheet" type="text/css" href="bower_components/bootstrap/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" type="text/css" href="bower_components/tether/dist/css/tether.min.css"/>
+    <link rel="stylesheet" type="text/css" href="bower_components/yasqe/dist/yasqe.min.css"/>
+    <link rel="stylesheet" type="text/css" href="bower_components/font-awesome/css/font-awesome.min.css"/>
+    <link rel="stylesheet" type="text/css" href="css/app.css"/>
+
+    <script type="text/javascript" src="bower_components/jquery/dist/jquery.min.js"></script>
+    <script type="text/javascript" src="bower_components/lodash/dist/lodash.min.js"></script>
+    <script type="text/javascript" src="bower_components/tether/dist/js/tether.min.js"></script>
+    <script type="text/javascript" src="bower_components/bootstrap/dist/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="bower_components/yasqe/dist/yasqe.bundled.min.js"></script>
+    <script type="text/javascript" src="bower_components/remarkable-bootstrap-notify/dist/bootstrap-notify.min.js"></script>
+</head>
+<body>
+<!-- MODALS -->
+<div class="modal fade" id="queryLeavingConfirmation" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Current query not saved</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                Do you want to save it?
+                <input type="hidden" name="leavingQueryId"/>
+                <input type="hidden" name="nextQueryId"/>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" id="buttonSaveAndLeaveCurrentQuery" data-dismiss="modal">Yes</button>
+                <button type="button" class="btn btn-danger" id="buttonLeaveCurrentQuery" data-dismiss="modal">No</button>
+                <button type="button" class="btn btn-primary" id="buttonCancelQueryLeaving" data-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="deletingSpUriConfirmation" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">There are URI in singleton properties</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                There are URI in singleton properties:
+                <div class="system-text"></div>
+                These URI will be lost. Do you want to continue?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" id="buttonDeleteSpUri" data-dismiss="modal">Yes</button>
+                <button type="button" class="btn btn-success" id="buttonCancelDeletingSpUri" data-dismiss="modal">No</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="queryExecutionResult" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document" style="max-width: 1200px;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Execution result</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="query-execution-result">
+                    <div class="query-execution-result_loader">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%; height: 25px;"></div>
+                    </div>
+                    <p class="query-execution-time system-text">
+                        Execution time:
+                        <span class="query-execution-time_value"></span>
+                    </p>
+                    <div class="query-execution-result_response" style="display: none;"></div>
+                    <iframe class="query-execution-result_response" scrolling="yes" style="display: none;"></iframe>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- TOOLBAR -->
+<nav class="navbar navbar-toggleable-md navbar-inverse mb-4 toolbar">
+    <button class="navbar-toggler navbar-toggler-right" type="button" data-toggle="collapse" data-target="#toolbarButtons" aria-controls="toolbarButtons" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+    <a class="navbar-brand" href="#">Toolbar</a>
+    <div class="collapse navbar-collapse" id="toolbarButtons">
+        <form class="navbar-nav btn-group">
+            <button class="btn btn-secondary" type="button" id="buttonBeautify">Beautify code</button>
+            <button class="btn btn-secondary" type="button" id="buttonRemoveMinus">Remove MINUS</button>
+            <button class="btn btn-secondary" type="button" id="buttonExpand">Expand URI</button>
+            <button class="btn btn-secondary" type="button" id="buttonCompact">Compact URI</button>
+            <button class="btn btn-secondary" type="button" id="buttonRemoveSingleton">Remove Singleton</button>
+            <button class="btn btn-secondary" type="button" id="buttonAddSingleton">Add SingletonProperty</button>
+            <div class="form-inline-checkbox">
+                <label class="form-check-label">
+                    <input class="form-check-input" type="checkbox" id="buttonShowSpCompactedView">
+                    SP Compacted View
+                </label>
+            </div>
+        </form>
+    </div>
+</nav>
+
+<!-- CONTENT -->
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-sm-12 col-md-9">
+            <!-- SPARQL EDITOR -->
+            <div class="sparql-editor-wrapper">
+                <label>Enter your SPARQL code:</label>
+                <div class="btn-group-sm query-buttons" role="group">
+                    <button type="button" class="btn btn-secondary">< Prev</button>
+                    <button type="button" class="btn btn-secondary">Redo ></button>
+                    <button type="button" class="btn btn-info" id="buttonShareQuery" data-ability="backend">Share</button>
+                </div>
+                <div class="editors">
+                    <textarea id="editor" style="display: none;"></textarea>
+                    <textarea id="editorCopy" style="display: none;"></textarea>
+                </div>
+            </div>
+            <!-- QUERY EXECUTION -->
+            <div class="query-execution container-fluid">
+                <form class="query-execution-form row" id="formExecuteQuery">
+                    <div class="col-xs-12 col-md-6">
+                        <div class="form-group">
+                            <label>Environment:</label>
+                            <select name="query-execution-env" class="form-control" id="selectQuerySettings"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Default Data Set Name (Graph IRI):</label>
+                            <input type="text" name="default_graph_uri" class="form-control" placeholder="Default Data Set Name (Graph IRI)">
+                        </div>
+                        <div class="form-group">
+                            <label>URL SPARQL Endpoint:</label>
+                            <input type="text" name="endpoint" class="form-control" placeholder="URL SPARQL Endpoint" required>
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-md-6">
+                        <div class="form-group">
+                            <label>&nbsp;</label>
+                            <div class="query-execution-form_buttons">
+                                <button type="submit" class="btn btn-success" id="buttonExecuteQuery">Execute</button>
+                                <button type="button" class="btn btn-secondary" id="buttonShowQueryResult" disabled>Show last result</button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <!-- SIDEBAR -->
+        <div class="col-sm-12 col-md-3 sidebar-wrapper">
+            <!-- LOCAL QUERIES -->
+            <div class="sidebar-item">
+                <label class="sidebar-item_label">My queries</label>
+                <div class="btn-group-sm sidebar-item_buttons" role="group">
+                    <button type="button" class="btn btn-primary" id="buttonAddLocalQuery">New</button>
+                    <button type="button" class="btn btn-success" id="buttonSaveLocalQuery">Save</button>
+                    <button type="button" class="btn btn-danger" id="buttonDeleteLocalQuery">Delete</button>
+                </div>
+                <div class="sidebar-item_content">
+                    <div id="local-query-list" class="list-group query-list"></div>
+                </div>
+            </div>
+            <!-- SHARED QUERIES -->
+            <div class="sidebar-item">
+                <label class="sidebar-item_label">Shared queries</label>
+                <div class="btn-group-sm sidebar-item_buttons" role="group">
+                    <button type="button" class="btn btn-success" id="buttonSaveSharedQuery" data-ability="backend">Save</button>
+                    <button type="button" class="btn btn-danger" id="buttonDeleteSharedQuery" data-ability="backend">Delete</button>
+                </div>
+                <div class="sidebar-item_content">
+                    <div id="shared-query-list" class="list-group query-list"></div>
+                </div>
+            </div>
+            <!-- COMMON PREFIXES -->
+            <div class="sidebar-item">
+                <label class="sidebar-item_label">Common prefixes</label>
+                <div class="btn-group-sm sidebar-item_buttons" role="group">
+                    <button type="button" class="btn btn-success" id="buttonSaveCommonPrefixes">Save</button>
+                    <button type="button" class="btn btn-danger" id="buttonClearCommonPrefixes">Clear</button>
+                </div>
+                <div class="sidebar-item_content">
+                    <textarea class="form-control common-prefixes-textarea" placeholder="PREFIX test:<http://www.test.com/rdf-schema#>"></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script type="text/javascript" src="js/AppConfig.js"></script>
+<script type="text/javascript" src="js/CodeEditor.js"></script>
+<script type="text/javascript" src="js/SparqlFormatter.js"></script>
+<script type="text/javascript" src="js/QueryRepository.js"></script>
+<script type="text/javascript" src="js/QueryHistoryLocalRepository.js"></script>
+<script type="text/javascript" src="js/QuerySettingsRepository.js"></script>
+<script type="text/javascript" src="js/QueriesLocalRepository.js"></script>
+<script type="text/javascript" src="js/QueriesSharedRepository.js"></script>
+<script type="text/javascript" src="js/QueryShare.js"></script>
+<script type="text/javascript" src="js/QueryList.js"></script>
+<script type="text/javascript" src="js/SharedQueryList.js"></script>
+<script type="text/javascript" src="js/QueryListManager.js"></script>
+<script type="text/javascript" src="js/CommonPrefixes.js"></script>
+<script type="text/javascript" src="js/QueryExecutionForm.js"></script>
+<script type="text/javascript" src="js/QueryLeavingConfirmation.js"></script>
+<script type="text/javascript" src="js/app.js"></script>
+</body>
+</html>
