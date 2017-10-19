@@ -419,11 +419,10 @@ class SparqlFormatter {
             var currentRestriction = '?restriction_' + i;
             var previousKey = i - 1;
             var previousClass = i === 0 ? chainData.rootClass : '?class_' + previousKey;
-            var restrictionPredicate = i === chainData.predicatesChain.length - 1 ? 'owl:allValuesFrom' : 'owl:allValuesProperty';
             query +=
                 previousClass + ' crm2:restriction ' + currentRestriction + '.\n' +
                 currentRestriction + ' owl:onProperty ' + predicate + '.\n' +
-                currentRestriction + ' ' + restrictionPredicate + ' ' + currentObject + '.\n';
+                currentRestriction + ' owl:allValuesFrom ' + currentObject + '.\n';
         });
         query += currentObject + ' crm2:restriction ?restriction_final.\n' +
             '?restriction_final rdfs:label ?label.\n' +
