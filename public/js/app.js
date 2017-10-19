@@ -348,63 +348,70 @@ function insertString(editor, str) {
 /**
  * Property autocomplete (ctrl+space handler)
  */
+function autocompletePredicate() {
+    // Define select
+    var autocompleteSelect = $('select[name="predicate-autocomplete"]');
+    autocompleteSelect.empty();
+
+    // Define current subject
+    var currentSubject = sparqlFormatter.getOneOnlyTripleElement(editor.doc.getLine(editor.getCursor().line));
+    if (currentSubject === null) {
+        $.notify('<strong>Subject for autocomplete not found!</strong><br>', { type: 'warning', placement: { from: 'bottom', align: 'right' } });
+        return false;
+    } else {
+        // Build query
+        var queryData = sparqlFormatter.buildPredicatesChain(editor.getValue(), currentSubject, [], null);
+        var query = sparqlFormatter.addSingletonProperties(sparqlFormatter.expandUri(sparqlFormatter.buildQueryByPredicatesChain(queryData), getAllPrefixes()));
+        console.log(query);
+
+        // Define request params
+        var endpoint = $('input[name="endpoint"]').val().replace(/\?/g, '');
+        var graphUri = $('input[name="default_graph_uri"]').val();
+        var parameters = { 'default-graph-uri': graphUri, 'query': query, 'debug': 'on', 'format': 'json'};
+
+        // Validate request params
+        if (_.isEmpty(endpoint) || _.isEmpty(graphUri)) {
+            $.notify('<strong>Endpoint and Graph IRI must be defined!</strong><br>', { type: 'warning', placement: { from: 'bottom', align: 'right' } });
+            return false;
+        }
+
+        // Get autocomplete items and fill the select
+        $.ajax({
+            type: "POST",
+            url: endpoint,
+            data: parameters,
+            dataType: 'jsonp',
+            success: function (data) {
+                var autocompleteItems = data.results.bindings;
+                if (!_.isEmpty(autocompleteItems)) {
+                    var options = '';
+                    _.forEach(autocompleteItems, function(item) {
+                        options += '<option value="'+ item.property.value + '">' + item.label.value + ' (' + item.property.value + ')' + '</option>';
+                    });
+                    autocompleteSelect.append(options);
+                } else {
+                    $.notify('<strong>Properties not found!</strong><br>', { type: 'warning', placement: { from: 'bottom', align: 'right' } });
+                }
+            },
+            error: function (data) {
+                console.log(data);
+            }
+        });
+    }
+}
+
+$('#buttonAutocompletePredicate').click(function(e) {
+    autocompletePredicate();
+});
 document.addEventListener("keydown", function (zEvent) {
     if (zEvent.ctrlKey  &&  zEvent.keyCode === 32) {
-        // Define select
-        var autocompleteSelect = $('select[name="property-autocomplete"]');
-        autocompleteSelect.empty();
-
-        // Define current subject
-        var currentSubject = sparqlFormatter.getOneOnlyTripleElement(editor.doc.getLine(editor.getCursor().line));
-        if (currentSubject === null) {
-            $.notify('<strong>Subject for autocomplete not found!</strong><br>', { type: 'warning', placement: { from: 'bottom', align: 'right' } });
-            return false;
-        } else {
-            // Build query
-            var queryData = sparqlFormatter.buildPredicatesChain(editor.getValue(), currentSubject, [], null);
-            var query = sparqlFormatter.addSingletonProperties(sparqlFormatter.expandUri(sparqlFormatter.buildQueryByPredicatesChain(queryData), getAllPrefixes()));
-            console.log(query);
-
-            // Define request params
-            var endpoint = $('input[name="endpoint"]').val().replace(/\?/g, '');
-            var graphUri = $('input[name="default_graph_uri"]').val();
-            var parameters = { 'default-graph-uri': graphUri, 'query': query, 'debug': 'on', 'format': 'json'};
-
-            // Validate request params
-            if (_.isEmpty(endpoint) || _.isEmpty(graphUri)) {
-                $.notify('<strong>Endpoint and Graph IRI must be defined!</strong><br>', { type: 'warning', placement: { from: 'bottom', align: 'right' } });
-                return false;
-            }
-
-            // Get autocomplete items and fill the select
-            $.ajax({
-                type: "POST",
-                url: endpoint,
-                data: parameters,
-                dataType: 'jsonp',
-                success: function (data) {
-                    var autocompleteItems = data.results.bindings;
-                    if (!_.isEmpty(autocompleteItems)) {
-                        var options = '';
-                        _.forEach(autocompleteItems, function(item) {
-                            options += '<option value="'+ item.property.value + '">' + item.label.value + ' (' + item.property.value + ')' + '</option>';
-                        });
-                        autocompleteSelect.append(options);
-                    } else {
-                        $.notify('<strong>Properties not found!</strong><br>', { type: 'warning', placement: { from: 'bottom', align: 'right' } });
-                    }
-                },
-                error: function (data) {
-                    console.log(data);
-                }
-            });
-        }
+        autocompletePredicate();
     }
 });
 
 /**
  * Handle autocomplete select changing
  */
-$('select[name="property-autocomplete"]').change(function(e) {
+$('select[name="predicate-autocomplete"]').change(function(e) {
     insertString(editor, '<' + $(this).val() + '>');
 });
