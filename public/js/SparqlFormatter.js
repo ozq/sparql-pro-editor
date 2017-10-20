@@ -333,8 +333,8 @@ class SparqlFormatter {
     /**
      * @param content
      */
-    getOneOnlyTripleElement(content) {
-        var regexp = new RegExp(this.tripleElementRegexpCode, 'i');
+    getFirstVariable(content) {
+        var regexp = new RegExp('(\\?\\w+)', 'i');
         return content.match(regexp)[1];
     }
 

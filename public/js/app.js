@@ -359,7 +359,7 @@ function autocompletePredicate() {
     autocompleteSelect.empty();
 
     // Define current subject
-    var currentSubject = sparqlFormatter.getOneOnlyTripleElement(editor.doc.getLine(editor.getCursor().line));
+    var currentSubject = sparqlFormatter.getFirstVariable(editor.doc.getLine(editor.getCursor().line));
     if (currentSubject === null) {
         $.notify('<strong>Subject for autocomplete not found!</strong><br>', { type: 'warning', placement: { from: 'bottom', align: 'right' } });
         return false;
