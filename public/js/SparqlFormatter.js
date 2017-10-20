@@ -10,6 +10,8 @@ class SparqlFormatter {
         this.excessLineRegexpCode = '(\\n\\s*){2}[^\\S\\t]';
         this.allIndentsRegexpCode = '^[\\t ]+(?![\\n])(?=[\\S])';
         this.variablesRegexpCode = '[?$]\\w+';
+        this.rdfTypeUri = '(<http:\\/\\/www\\.w3\\.org\\/1999\\/02\\/22-rdf-syntax-ns#type>|rdf:type)';
+        this.tripleElementRegexpCode = '^\\s*([?<$\\w][\\w:\\/\\.\\-#>]+)\\s*$';
 
         this.indentLength = options && options.indentLength ? options.indentLength : 4;
     }
@@ -301,21 +303,131 @@ class SparqlFormatter {
 
     getAllPredicatesAndObjects(content) {
         var predicatesAndObjects = [];
-        var excessWhitespacesRegexp = new RegExp('[\\s\.]*$', 'gm');
         var tripleLines = content.match(new RegExp(this.tripleLineRegexpCode, 'g'));
 
         if (tripleLines) {
+            var self = this;
             var triples = tripleLines.map(function(triple) {
-                return triple.replace(excessWhitespacesRegexp, '');
+                return self.removeExcessWhitespaces(triple);
             });
 
             triples.forEach(function(triple) {
-                var tripleParts = triple.split(/\s/g);
+                var tripleParts = self.getTripleParts(triple);
                 predicatesAndObjects.push(tripleParts[1]);
                 predicatesAndObjects.push(tripleParts[2]);
             });
         }
 
         return _.uniq(predicatesAndObjects);
+    }
+
+    /**
+     * @param value
+     * @returns {boolean}
+     */
+    isVariable(value) {
+        var regexp = new RegExp(this.variablesRegexpCode, 'i');
+        return regexp.test(value);
+    }
+
+    /**
+     * @param content
+     */
+    getOneOnlyTripleElement(content) {
+        var regexp = new RegExp(this.tripleElementRegexpCode, 'i');
+        return content.match(regexp)[1];
+    }
+
+    /**
+     * @param content
+     */
+    removeExcessWhitespaces(content) {
+        var regexp = new RegExp('[\\s\.]*$', 'gm');
+        return content.replace(regexp, '');
+    }
+
+    /**
+     * @param triple
+     * @returns {Array|*}
+     */
+    getTripleParts(triple) {
+        return triple.split(/\s/g);
+    }
+
+    /**
+     * @param content
+     * @param value
+     */
+    getFirstLineByValue(content, value) {
+        var regexp = new RegExp('.*' + value + '.*', 'i');
+        return content.match(regexp)[0];
+    }
+
+    /**
+     * @param value
+     * @returns {boolean}
+     */
+    isRdfTypeUri(value) {
+        var regexp = new RegExp(this.rdfTypeUri, 'i');
+        return regexp.test(value);
+    }
+
+    /**
+     * @param content
+     * @param subject
+     * @param predicatesChain
+     * @param rootClass
+     * @returns {{rootClass: *, predicatesChain: *}}
+     */
+    buildPredicatesChain(content, subject, predicatesChain, rootClass) {
+        if (_.isString(rootClass)) {
+            return {
+                'rootClass': rootClass,
+                'predicatesChain': _.reverse(predicatesChain)
+            };
+        }
+
+        var firstFoundedLine = _.trim(this.getFirstLineByValue(content, subject));
+        var foundedTripleParts = this.getTripleParts(firstFoundedLine);
+        var lineSubject = foundedTripleParts[0];
+        var linePredicate = foundedTripleParts[1];
+        var lineObject = _.trimEnd(foundedTripleParts[2], '.');
+
+        if (this.isVariable(linePredicate) ) {
+            var getObjectBySubjectRegexp = new RegExp('^\\s*\\' + linePredicate + '\\s+\\S+\\s+([\\S]+)', 'gm');
+            var match = getObjectBySubjectRegexp.exec(content);
+            linePredicate = _.trimEnd(match[1], '.');
+        }
+        if (subject === lineSubject) {
+            if (this.isRdfTypeUri(linePredicate)) {
+                return this.buildPredicatesChain(content, lineSubject, predicatesChain, lineObject);
+            } else {
+                console.log('Wrong sparql syntax...');
+            }
+        }
+        if (subject === lineObject) {
+            predicatesChain.push(linePredicate);
+            return this.buildPredicatesChain(content, lineSubject, predicatesChain);
+        }
+    }
+
+    buildQueryByPredicatesChain(chainData) {
+        var query = '';
+        var currentObject = chainData.rootClass;
+        _.forEach(chainData.predicatesChain, function(predicate, i) {
+            currentObject = '?class_' + i;
+            var currentRestriction = '?restriction_' + i;
+            var previousKey = i - 1;
+            var previousClass = i === 0 ? chainData.rootClass : '?class_' + previousKey;
+            query +=
+                previousClass + ' crm2:restriction ' + currentRestriction + '.\n' +
+                currentRestriction + ' owl:onProperty ' + predicate + '.\n' +
+                currentRestriction + ' owl:allValuesFrom ' + currentObject + '.\n';
+        });
+        query += currentObject + ' crm2:restriction ?restriction_final.\n' +
+            '?restriction_final rdfs:label ?label.\n' +
+            '?restriction_final owl:onProperty ?property.\n';
+
+        return 'SELECT ?label ?property WHERE { \n' + query + '\n}';
     }
 }
