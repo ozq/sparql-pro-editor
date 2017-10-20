@@ -18,7 +18,7 @@ function buildCodeEditor() {
 function getEditorValue() {
     var query = editor.getValue();
     if ($('#buttonEnableWSparql').is(':checked')) {
-        query = wssparql.toSparql(query, true);
+        query = wssparql.toSparql(query);
     }
     return query;
 }

@@ -8,18 +8,17 @@ class WSparql {
         this.methods = {
             wearing: function (triple, postfix) {
                 var tripleParts = SparqlFormatter.getTripleParts(triple);
-                var prefix = SparqlFormatter.getPrefix(tripleParts[1]);
                 var relationPart = '';
                 var object = tripleParts[2];
                 if (_.isUndefined(postfix)) {
-                    relationPart = 'relation(' + object + ' ' + prefix + 'object ' + object + 'Object' + ')\n';
+                    relationPart = 'relation(' + object + ' crm2:object ' + object + 'Object' + ')\n';
                 } else {
                     relationPart = 'OPTIONAL {\n' +
-                        'requiredRelation(' + object + ' ' + prefix + 'object ' + object + 'Object' + ')\n' +
+                        'requiredRelation(' + object + ' crm2:object ' + object + 'Object' + ')\n' +
                         postfix + '\n}';
                 }
-                relationPart += 'relation(' + object + ' ' + prefix + 'date_from ' + '?dateFrom' + ')\n';
-                relationPart += 'relation(' + object + ' ' + prefix + 'date_to ' + '?dateTo' + ')\n';
+                relationPart += 'relation(' + object + ' crm2:date_from ' + '?dateFrom' + ')\n';
+                relationPart += 'relation(' + object + ' crm2:date_to ' + '?dateTo' + ')\n';
                 var query = 'OPTIONAL {\n' + triple + '\n' + relationPart + '\n}';
                 return {
                     query: query,

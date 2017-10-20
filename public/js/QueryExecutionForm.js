@@ -84,6 +84,11 @@ class QueryExecutionForm {
 
             // Get form data
             var query = getEditorValue();
+            if ($('#buttonEnableWSparql').is(':checked')) {
+                query = sparqlFormatter.removeSingletonProperties(query).result;
+                query = sparqlFormatter.addSingletonProperties(query);
+            }
+
             var method = query.length >= 1900 ? 'POST' : 'GET';
             var endpoint = thisObject.form.find('input[name="endpoint"]').val().replace(/\?/g, '');
             var graphUri = thisObject.form.find('input[name="default_graph_uri"]').val();
