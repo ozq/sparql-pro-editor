@@ -35,6 +35,11 @@ if (!appConfig.isBackendInstalled) {
     $('#shared-query-list').hide();
 }
 
+var isWSparqlEnabled = localStorage.getItem('spe.isWSparqlEnabled');
+if (isWSparqlEnabled === 'true') {
+    $('#buttonEnableWSparql').prop('checked', true);
+}
+
 $('#buttonAddLocalQuery').click(function() {
     var newItem = {
         query: ''
@@ -360,8 +365,10 @@ function autocompletePredicate() {
         return false;
     } else {
         // Build query
-        var queryData = sparqlFormatter.buildPredicatesChain(editor.getValue(), currentSubject, [], null);
+        var queryData = sparqlFormatter.buildPredicatesChain(getEditorValue(), currentSubject, [], null);
         var query = sparqlFormatter.addSingletonProperties(sparqlFormatter.expandUri(sparqlFormatter.buildQueryByPredicatesChain(queryData), getAllPrefixes()));
+
+        console.log('Autocomplete query:');
         console.log(query);
 
         // Define request params
@@ -414,4 +421,10 @@ document.addEventListener("keydown", function (zEvent) {
  */
 $('select[name="predicate-autocomplete"]').change(function(e) {
     insertString(editor, '<' + $(this).val() + '>');
+});
+
+$('#buttonEnableWSparql').click(function(e) {
+    var isWSparqlEnabled = $(this).is(':checked');
+    console.log(isWSparqlEnabled);
+    localStorage.setItem('spe.isWSparqlEnabled', isWSparqlEnabled);
 });

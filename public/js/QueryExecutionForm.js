@@ -83,7 +83,7 @@ class QueryExecutionForm {
             }
 
             // Get form data
-            var query = editor.getValue();
+            var query = getEditorValue();
             var method = query.length >= 1900 ? 'POST' : 'GET';
             var endpoint = thisObject.form.find('input[name="endpoint"]').val().replace(/\?/g, '');
             var graphUri = thisObject.form.find('input[name="default_graph_uri"]').val();

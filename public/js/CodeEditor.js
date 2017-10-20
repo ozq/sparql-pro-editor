@@ -1,5 +1,8 @@
+//TODO: #refactor: create CodeEditor class (!), not global variables and functions
+
 var editor = buildCodeEditor();
 var editorCopy = buildCodeEditorCopy(editor);
+var wssparql = new WSparql();
 
 function buildCodeEditor() {
     return YASQE.fromTextArea(
@@ -10,6 +13,14 @@ function buildCodeEditor() {
             createShareLink: false
         }
     );
+}
+
+function getEditorValue() {
+    var query = editor.getValue();
+    if ($('#buttonEnableWSparql').is(':checked')) {
+        query = wssparql.toSparql(query, true);
+    }
+    return query;
 }
 
 function buildCodeEditorCopy(editor) {

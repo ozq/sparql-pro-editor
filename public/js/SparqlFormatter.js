@@ -219,7 +219,7 @@ class SparqlFormatter {
         };
     }
 
-    addSingletonProperties(content) {
+    addSingletonProperties(content, spPrefix = '') {
         var tripleLineRegexp = new RegExp(this.tripleLineRegexpCode, 'gi');
         var tripleElementsRegexp = new RegExp(this.tripleElementsRegexpCode, 'gi');
         var singletonPropertyNumber = 0;
@@ -232,7 +232,7 @@ class SparqlFormatter {
             }
 
             singletonPropertyNumber++;
-            var singletonProperty = '?sp_' + singletonPropertyNumber;
+            var singletonProperty = '?sp_' + singletonPropertyNumber + spPrefix;
 
             // Get triple elements
             var triplePairElements = triple.match(tripleElementsRegexp);
@@ -312,7 +312,7 @@ class SparqlFormatter {
             });
 
             triples.forEach(function(triple) {
-                var tripleParts = self.getTripleParts(triple);
+                var tripleParts = SparqlFormatter.getTripleParts(triple);
                 predicatesAndObjects.push(tripleParts[1]);
                 predicatesAndObjects.push(tripleParts[2]);
             });
@@ -350,16 +350,24 @@ class SparqlFormatter {
      * @param triple
      * @returns {Array|*}
      */
-    getTripleParts(triple) {
+    static getTripleParts(triple) {
         return triple.split(/\s/g);
+    }
+
+    /**
+     * @param uri
+     * @returns {string}
+     */
+    static getPrefix(uri) {
+        return _.split(uri, ':')[0] + ':';
     }
 
     /**
      * @param content
      * @param value
      */
-    getFirstLineByValue(content, value) {
-        var regexp = new RegExp('.*' + value + '.*', 'i');
+    getFirstTripleByValue(content, value) {
+        var regexp = new RegExp('^\\s*\\?' + value + '.*', 'mi');
         return content.match(regexp)[0];
     }
 
@@ -387,8 +395,8 @@ class SparqlFormatter {
             };
         }
 
-        var firstFoundedLine = _.trim(this.getFirstLineByValue(content, subject));
-        var foundedTripleParts = this.getTripleParts(firstFoundedLine);
+        var firstFoundedLine = _.trim(this.getFirstTripleByValue(content, subject));
+        var foundedTripleParts = SparqlFormatter.getTripleParts(firstFoundedLine);
         var lineSubject = foundedTripleParts[0];
         var linePredicate = foundedTripleParts[1];
         var lineObject = _.trimEnd(foundedTripleParts[2], '.');
