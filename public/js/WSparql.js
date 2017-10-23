@@ -91,7 +91,7 @@ class WSparql {
             _.forEach(methodWhereVariablesGroup, function(methodWhereVariables) {
                 query = query.replace(whereVariablesRegexp, function (match, c1, queryVariables, c2) {
                     queryVariables = queryVariables.split(/\s+/);
-                    var wherePart = _.uniq(queryVariables.concat(methodWhereVariables)).join(' ');
+                    var wherePart = _.uniq(queryVariables.concat(methodWhereVariables)).join(' ').replace('*', '');
                     return  c1 + ' ' + wherePart + ' ' + c2;
                 });
             });
