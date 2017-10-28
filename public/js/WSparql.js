@@ -84,7 +84,7 @@ class WSparql {
                     var result = self.methods[name].apply(self, methodArguments.split(','));
                     methodWhereVariablesGroup.push(result.whereVariables);
                     return addSingletonProperties === true ?
-                        sparqlFormatter.addSingletonProperties(result.query, '_ws') :
+                        sparqlFormatter.addSingletonProperties(result.query, false, '_ws') :
                         result.query;
                 });
             }

@@ -354,6 +354,15 @@ function insertString(editor, str) {
  * Property autocomplete (ctrl+space handler)
  */
 function autocompletePredicate() {
+    var sparqlClient = new SparqlClient({
+        graphIri: queryExectuionForm.getGraphIri(),
+        requestUrl: queryExectuionForm.getEndpoint(),
+        requestType: 'POST',
+        requestDataType: 'jsonp',
+        debugMode: 'on',
+        responseFormat: 'json',
+    });
+
     // Define select
     var autocompleteSelect = $('select[name="predicate-autocomplete"]');
     autocompleteSelect.empty();
@@ -371,24 +380,16 @@ function autocompletePredicate() {
         console.log('Autocomplete query:');
         console.log(query);
 
-        // Define request params
-        var endpoint = $('input[name="endpoint"]').val().replace(/\?/g, '');
-        var graphUri = $('input[name="default_graph_uri"]').val();
-        var parameters = { 'default-graph-uri': graphUri, 'query': query, 'debug': 'on', 'format': 'json'};
-
         // Validate request params
-        if (_.isEmpty(endpoint) || _.isEmpty(graphUri)) {
+        if (_.isEmpty(sparqlClient.requestUrl) || _.isEmpty(sparqlClient.graphIri)) {
             $.notify('<strong>Endpoint and Graph IRI must be defined!</strong><br>', { type: 'warning', placement: { from: 'bottom', align: 'right' } });
             return false;
         }
 
         // Get autocomplete items and fill the select
-        $.ajax({
-            type: "POST",
-            url: endpoint,
-            data: parameters,
-            dataType: 'jsonp',
-            success: function (data) {
+        sparqlClient.execute(
+            query,
+            function (data) {
                 var autocompleteItems = data.results.bindings;
                 if (!_.isEmpty(autocompleteItems)) {
                     var options = '';
@@ -400,10 +401,10 @@ function autocompletePredicate() {
                     $.notify('<strong>Properties not found!</strong><br>', { type: 'warning', placement: { from: 'bottom', align: 'right' } });
                 }
             },
-            error: function (data) {
+            function (data) {
                 console.log(data);
             }
-        });
+        );
     }
 }
 

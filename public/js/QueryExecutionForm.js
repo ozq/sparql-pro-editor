@@ -4,9 +4,19 @@ class QueryExecutionForm {
         this.querySettingsList = $(querySettingsList);
         this.querySettingsRepository = querySettingsRepository;
         this.key = 'spe.queryExecutionFormData';
+        this.initSparqlClient();
         this.buildForm();
         this.initListeners();
     };
+
+    initSparqlClient() {
+        this.sparqlClient = new SparqlClient({
+            graphIri: '',
+            requestType: 'POST',
+            requestDataType: 'html',
+            debugMode: 'on',
+        });
+    }
 
     buildForm() {
         this.buildQuerySettingsList();
@@ -26,18 +36,27 @@ class QueryExecutionForm {
     }
 
     buildQuerySettingsList() {
-        var thisObject = this;
+        var self = this;
         var querySettingsItems = this.querySettingsRepository.getAll();
 
-        thisObject.querySettingsList.html('');
+        self.querySettingsList.html('');
         querySettingsItems.forEach(function(querySettings) {
             var selectItemText = querySettings.endpoint + ' (' + querySettings.default_graph_uri + ')';
-            thisObject.querySettingsList.append($('<option></option>').attr('value', querySettings.id).text(selectItemText));
+            self.querySettingsList.append($('<option></option>').attr('value', querySettings.id).text(selectItemText));
         });
     }
 
+    getEndpoint() {
+        return this.form.find('input[name="endpoint"]').val().replace(/\?/g, '');
+    }
+
+    getGraphIri() {
+        return this.form.find('input[name="default_graph_uri"]').val();
+    }
+
     initListeners() {
-        var thisObject = this;
+        var self = this;
+
         this.form.submit(function(e) {
             e.preventDefault();
             function showResult(queryTimeExecutionStart) {
@@ -59,20 +78,19 @@ class QueryExecutionForm {
             function sendRequest(endpoint, parameters, responseElement) {
                 var queryTimeExecutionStart = new Date().getTime();
                 if (method === 'POST') {
-                    $.ajax({
-                        type: "POST",
-                        url: endpoint,
-                        data: parameters,
-                        dataType: 'html',
-                        success: function (data) {
+                    self.sparqlClient.requestUrl = parameters['endpoint'];
+                    self.sparqlClient.graphIri = parameters['default-graph-uri'];
+                    self.sparqlClient.execute(
+                        query,
+                        function(data) {
                             showResult(queryTimeExecutionStart);
                             responseElement.html(data).show();
                         },
-                        error: function (data) {
+                        function(data) {
                             showResult(queryTimeExecutionStart);
                             responseElement.html(data.responseText).show();
                         }
-                    });
+                    );
                 } else {
                     var requestUrl = endpoint + '?' + jQuery.param(parameters);
                     responseElement.on('load', function() {
@@ -85,21 +103,19 @@ class QueryExecutionForm {
             // Get form data
             var query = getEditorValue();
             if ($('#buttonEnableWSparql').is(':checked')) {
-                query = sparqlFormatter.removeSingletonProperties(query).result;
-                query = sparqlFormatter.addSingletonProperties(query);
+                query = sparqlFormatter.addSingletonProperties(query, true);
             }
-
             var method = query.length >= 1900 ? 'POST' : 'GET';
-            var endpoint = thisObject.form.find('input[name="endpoint"]').val().replace(/\?/g, '');
-            var graphUri = thisObject.form.find('input[name="default_graph_uri"]').val();
+            var endpoint = self.getEndpoint();
+            var graphUri = self.getGraphIri();
 
             // Save form data
-            localStorage.setItem(this.key, JSON.stringify($(this).serializeArray()));
-            thisObject.querySettingsRepository.add({
+            localStorage.setItem(self.key, JSON.stringify($(this).serializeArray()));
+            self.querySettingsRepository.add({
                 'default_graph_uri': graphUri,
                 'endpoint': endpoint
             });
-            thisObject.buildQuerySettingsList();
+            self.buildQuerySettingsList();
 
             var parameters = {
                 'default-graph-uri': graphUri,
@@ -119,7 +135,7 @@ class QueryExecutionForm {
 
         this.querySettingsList.change(function(e) {
             var parameters = [];
-            var selectedQuerySettings = thisObject.querySettingsRepository.get($(this).val());
+            var selectedQuerySettings = self.querySettingsRepository.get($(this).val());
 
             if (selectedQuerySettings) {
                 Object.keys(selectedQuerySettings).forEach(function(key) {
@@ -128,7 +144,7 @@ class QueryExecutionForm {
                         value: selectedQuerySettings[key]
                     });
                 });
-                thisObject.fillForm(parameters);
+                self.fillForm(parameters);
             }
         });
     }

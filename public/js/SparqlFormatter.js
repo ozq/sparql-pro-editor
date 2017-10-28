@@ -219,7 +219,10 @@ class SparqlFormatter {
         };
     }
 
-    addSingletonProperties(content, spPostfix = '', spPrefix = 'sp_') {
+    addSingletonProperties(content, rebuild = false, spPostfix = '', spPrefix = 'sp_') {
+        if (rebuild === true) {
+            content = sparqlFormatter.removeSingletonProperties(content).result;
+        }
         var tripleLineRegexp = new RegExp(this.tripleLineRegexpCode, 'gi');
         var tripleElementsRegexp = new RegExp(this.tripleElementsRegexpCode, 'gi');
         var singletonPropertyNumber = 0;
