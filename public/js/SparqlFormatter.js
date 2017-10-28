@@ -3,7 +3,7 @@ class SparqlFormatter {
         //TODO: check regexp, they may be not "clear" (match excess whitespaces and dots)
         this.triplePairsRegexpCode = '(?:(([?<$\\w][\\w:\\/\\.\\-#>]+)[\\s\\.]+){3}){2}';
         this.tripleLineRegexpCode = '(?:(?:[\\w]*[?<$:][\\w:\\/\\.\\-#>]+)[\\s\\.]+){3}';
-        this.tripleElementsRegexpCode = '[?<$\\w:][\\w:\\/\\.\\-#>]+[?!\\w>]';
+        this.tripleElementsRegexpCode = '[?<$\\w:][\\w:\\/\\.\\-#>]*[?!\\w>]';
         this.allUriRegexpCode = '[\\w<]+\\:[\\w#\\/\\.-\ v\>-]+';
         this.singletonPropertyUri = '\<http://www.w3.org/1999/02/22-rdf-syntax-ns#singletonPropertyOf>';
         this.allPrefixesRegexpCode = '[\\w]+(?=:(?!\\/\\/))';
@@ -219,7 +219,7 @@ class SparqlFormatter {
         };
     }
 
-    addSingletonProperties(content, spPrefix = '') {
+    addSingletonProperties(content, spPostfix = '', spPrefix = 'sp_') {
         var tripleLineRegexp = new RegExp(this.tripleLineRegexpCode, 'gi');
         var tripleElementsRegexp = new RegExp(this.tripleElementsRegexpCode, 'gi');
         var singletonPropertyNumber = 0;
@@ -232,7 +232,7 @@ class SparqlFormatter {
             }
 
             singletonPropertyNumber++;
-            var singletonProperty = '?sp_' + singletonPropertyNumber + spPrefix;
+            var singletonProperty = '?' + spPrefix + singletonPropertyNumber + spPostfix;
 
             // Get triple elements
             var triplePairElements = triple.match(tripleElementsRegexp);
