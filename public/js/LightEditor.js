@@ -1,12 +1,8 @@
 class LightEditor {
     constructor(configuration) {
-        this.loadConfiguration(configuration);
-
-        this.sparqlFormatter = new SparqlFormatter();
         this.selectedClass = null;
+        this.loadConfiguration(configuration);
         this.loadClasses();
-        this.selectedProperties = this.getSelectedProperties();
-
         this.initSelectedPropertyTree();
         this.initBuildQueryButton();
     }
@@ -15,6 +11,7 @@ class LightEditor {
         if (typeof configuration === 'object') {
             this.configuration = configuration;
             this.classesSelectElement = this.loadConfigurationItem('classesSelectElement');
+            this.sparqlFormatter = this.loadConfigurationItem('sparqlFormatter');
             this.propertyTreeElement = this.loadConfigurationItem('propertyTreeElement');
             this.selectedPropertyTreeElement = this.loadConfigurationItem('selectedPropertyTreeElement');
             this.queryInputElement = this.loadConfigurationItem('queryInputElement');
@@ -91,10 +88,6 @@ class LightEditor {
         );
     }
 
-    getSelectedProperties() {
-        return this.selectedProperties;
-    }
-
     getQuery() {
         return document.querySelector(this.queryInputElement).value;
     }
@@ -105,7 +98,7 @@ class LightEditor {
 
         for (var property in data) {
             propertyTreeData.push({
-                title: data[property].label + ' (' + property + ')',
+                title: data[property].label + ' (' + self.sparqlFormatter.compactUri(property, {}, false) + ')',
                 shortTitle: data[property].label,
                 class: data[property].class,
                 property: property,
@@ -136,7 +129,7 @@ class LightEditor {
                      parentNodeData.node.removeChildren();
                      result.forEach(function (item) {
                          parentNodeData.node.addChildren({
-                             title: item.label.value + ' (' + item.property.value + ')',
+                             title: item.label.value + ' (' + self.sparqlFormatter.compactUri(item.property.value, {}, false) + ')',
                              class: item.class.value,
                              property: item.property.value,
                              shortTitle: item.label.value
@@ -145,9 +138,6 @@ class LightEditor {
                  });
              },
              select: function(event, nodeData) {
-                 var node = nodeData.node;
-                 var chain = [];
-
                  function goThrowParents(node, chain) {
                      var parentNode = node.getParent();
                      if (parentNode) {
@@ -155,22 +145,26 @@ class LightEditor {
                          goThrowParents(parentNode, chain);
                      }
                  }
-                 goThrowParents(node, chain);
 
+                 var node = nodeData.node;
+                 var chain = [];
+                 goThrowParents(node, chain);
                  chain.reverse();
 
-                 var selectedPropertyTitle = [];
-                 chain.forEach(function (item) {
-                     selectedPropertyTitle.push(item.data.shortTitle);
-                 });
-
-                 var selectedNode = {
-                     title: selectedPropertyTitle.join('.'),
-                     chain: chain
-                 };
-
-                 var selectedPropertyTreeRootNode = selectedPropertyTreeElement.fancytree('getRootNode');
-                 selectedPropertyTreeRootNode.addChildren(selectedNode);
+                 if (node.isSelected()) {
+                     var selectedPropertyTitle = [];
+                     chain.forEach(function (item) {
+                         selectedPropertyTitle.push(item.data.shortTitle);
+                     });
+                     selectedPropertyTreeElement.fancytree('getRootNode').addChildren({
+                         title: selectedPropertyTitle.join('.'),
+                         chain: chain
+                     });
+                 } else {
+                     $(self.selectedPropertyTreeElement).fancytree('getTree').findFirst(function (node) {
+                         return _.isEqual(node.data.chain, chain);
+                     }).remove();
+                 }
              }
          });
 
@@ -211,7 +205,7 @@ class LightEditor {
             var label = self.classes[key];
             var option = document.createElement('option');
             if (label) {
-                option.innerHTML = label + ' (' + key + ')';
+                option.innerHTML = label + ' (' + self.sparqlFormatter.compactUri(key, {}, false) + ')';
                 option.value = key;
                 classesSelect.appendChild(option);
             }
@@ -238,41 +232,99 @@ class LightEditor {
 
     initBuildQueryButton() {
         var self = this;
-
         document.querySelector(this.buildQueryElement).addEventListener('click', function(e) {
-            self.buildQuery();
+            $(self.queryInputElement).val(self.buildQuery());
         });
     }
 
+    defineVariableNameByUri(uri, prevVarName = '') {
+        prevVarName = prevVarName.replace(/\?/g, '');
+        var propertyUriParts = uri.split('/');
+        var objectVarBaseName = propertyUriParts[propertyUriParts.length - 1];
+        var hashParts = objectVarBaseName.split('#');
+        if (hashParts) {
+            objectVarBaseName = hashParts[hashParts.length - 1];
+        }
+        return prevVarName === '' ?
+            objectVarBaseName :
+            prevVarName + objectVarBaseName.charAt(0).toUpperCase() + objectVarBaseName.slice(1);
+    }
+
+    getSelectedVariableNames() {
+        var self = this;
+        var selectedNodes = $(this.selectedPropertyTreeElement).fancytree('getTree').getRootNode().getChildren();
+        var variables = [];
+        selectedNodes.forEach(function (selectedNode) {
+            var chain = selectedNode.data.chain;
+            var variableName = '';
+            chain.forEach(function (selectedNode) {
+                variableName = self.defineVariableNameByUri(selectedNode.data.property, variableName);
+            });
+            variables.push('?' + variableName);
+        });
+
+        return _.uniq(variables);
+    }
+
     buildQuery() {
+        var self = this;
         var selectedNodes = $(this.selectedPropertyTreeElement).fancytree('getTree').getRootNode().children;
 
-        var globalChainData = [];
+        var properties = {};
         selectedNodes.forEach(function (selectedNode) {
-            var properties = [];
+            var childProperties = [];
             var selectedNodeChain = selectedNode.data.chain;
             selectedNodeChain.forEach(function (chainNode) {
-                properties.push(chainNode.data.property);
-                if (_.has(globalChainData, properties) === false) {
-                    _.set(globalChainData, properties, []);
+                childProperties.push(chainNode.data.property);
+                if (_.has(properties, childProperties) === false) {
+                    _.set(properties, childProperties, {});
                 }
             });
         });
 
+        //TODO: Final result must be clean, without placeholders.
+        function buildOptionalPart(property, childProperties, subjectVarName, objectVarName = '', query = '') {
+            objectVarName = '?' + self.defineVariableNameByUri(property, objectVarName);
+            var optionalPlaceholder = '%optionalPlaceholder%';
+            property = property.indexOf('http') === 0 ? '<' + property + '>' : property;
+            var newQueryPart = _.isEmpty(childProperties) ?
+                'OPTIONAL { \n' + subjectVarName + ' ' + property + ' ' + objectVarName + '\n}\n' + optionalPlaceholder :
+                'OPTIONAL { \n' + subjectVarName + ' ' + property + ' ' + objectVarName + '\n' + optionalPlaceholder + '\n}\n';
 
-        console.log(globalChainData);
+            query = query === '' ? newQueryPart : query.replace('%optionalPlaceholder%', newQueryPart);
 
-        function buildQueryBody(properties, query) {
-            properties.forEach(function (property, children) {
-                query += 'OPTIONAL {}';
-                return buildQueryBody(children, query);
+            _.forEach(childProperties, function(grandChildProperties, childProperty) {
+                query = buildOptionalPart(childProperty, grandChildProperties, objectVarName, objectVarName, query);
             });
+
+            return query;
         }
 
-        var queryBody = buildQueryBody(globalChainData, '');
+        function buildQuery(properties) {
+            var queryBody = '';
+            _.forEach(properties, function(childProperties, property) {
+                queryBody = queryBody + buildOptionalPart(property, childProperties, '?resourceUri');
+            });
+            queryBody = queryBody.replace(new RegExp('%optionalPlaceholder%', 'gi'), '');
+            var selectedVariableNames = self.getSelectedVariableNames().join(' ');
 
+            //TODO: This logic (add prefix part) could be encapsulated in compactUri method,
+            //TODO: just add additional param to this method, e.g. autoAddPrefixes.
+            var prefixPart = '';
+            _.forEach(self.sparqlFormatter.additionalPrefixes, function(uri, prefix) {
+                prefixPart = prefixPart + '\n' + 'PREFIX ' + prefix + ': ' + '<' + uri + '>';
+            });
 
+            return self.sparqlFormatter.compactUri(
+                self.sparqlFormatter.addSingletonProperties(prefixPart + '\n' + 'SELECT ' + selectedVariableNames + ' WHERE {\n' + queryBody + '\n}')
+            );
+        }
 
-        //TODO: тут строим sparql в зависимости от выбранного класса selectedPropertyTree
+        var queryBody = buildQuery(properties);
+
+        console.log('Generated query:');
+        console.log(queryBody);
+
+        return queryBody;
     }
 }

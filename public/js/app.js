@@ -1,4 +1,3 @@
-var queryExectuionForm = new QueryExecutionForm('#formExecuteQuery', '#selectQuerySettings', new QuerySettingsRepository());
 var queryHistoryLocalRepository = new QueryHistoryLocalRepository();
 var queryLeavingConfirmation = new QueryLeavingConfirmation('#queryLeavingConfirmation');
 var commonPrefixes = new CommonPrefixes(editor);

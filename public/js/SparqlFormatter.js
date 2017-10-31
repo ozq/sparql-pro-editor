@@ -14,6 +14,7 @@ class SparqlFormatter {
         this.tripleElementRegexpCode = '^\\s*([?<$\\w][\\w:\\/\\.\\-#>]+)\\s*$';
 
         this.indentLength = options && options.indentLength ? options.indentLength : 4;
+        this.additionalPrefixes = options && options.additionalPrefixes ? options.additionalPrefixes : {};
     }
 
     beautify(content) {
@@ -150,10 +151,15 @@ class SparqlFormatter {
         return content;
     }
 
-    compactUri(content, prefixes) {
+    compactUri(content, prefixes = {}, isStrict = true) {
+        prefixes = _.merge(this.additionalPrefixes, prefixes);
         Object.keys(prefixes).map(function(prefix) {
             var url = prefixes[prefix];
-            var replacedContent = content.replace(new RegExp('\<' + url + '(\\w+)\>', 'gi'), function(match, property) {
+            var regExp = isStrict === true ?
+                new RegExp('\<' + url + '(\\w+)\>', 'gi') :
+                new RegExp(url + '(\\w+)', 'gi');
+
+            var replacedContent = content.replace(regExp, function(match, property) {
                 return prefix + '\:' + property;
             });
             replacedContent ? content = replacedContent : false;
