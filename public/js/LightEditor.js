@@ -301,7 +301,7 @@ class LightEditor {
         }
 
         function buildQuery(properties) {
-            var queryBody = '';
+            var queryBody = '?resourceUri' + ' <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ' + '<' + self.selectedClass + '>' + '\n';
             _.forEach(properties, function(childProperties, property) {
                 queryBody = queryBody + buildOptionalPart(property, childProperties, '?resourceUri');
             });
