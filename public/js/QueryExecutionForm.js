@@ -78,7 +78,7 @@ class QueryExecutionForm {
             function sendRequest(endpoint, parameters, responseElement) {
                 var queryTimeExecutionStart = new Date().getTime();
                 if (method === 'POST') {
-                    self.sparqlClient.requestUrl = parameters['endpoint'];
+                    self.sparqlClient.requestUrl = endpoint;
                     self.sparqlClient.graphIri = parameters['default-graph-uri'];
                     self.sparqlClient.execute(
                         query,
@@ -128,6 +128,9 @@ class QueryExecutionForm {
                 $('iframe.query-execution-result_response');
 
             hideLastResult();
+            console.log(endpoint);
+            console.log(parameters);
+            console.log(responseElement);
             sendRequest(endpoint, parameters, responseElement);
 
             $('#queryExecutionResult').modal('show');
