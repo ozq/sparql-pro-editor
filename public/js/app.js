@@ -1,5 +1,6 @@
 var queryHistoryLocalRepository = new QueryHistoryLocalRepository();
 var queryLeavingConfirmation = new QueryLeavingConfirmation('#queryLeavingConfirmation');
+var wsparqlService = new WSparql();
 var commonPrefixes = new CommonPrefixes(editor);
 var sparqlFormatter = new SparqlFormatter({
     indentLength: editor.indentLength
@@ -427,4 +428,8 @@ $('#buttonEnableWSparql').click(function(e) {
     var isWSparqlEnabled = $(this).is(':checked');
     console.log(isWSparqlEnabled);
     localStorage.setItem('spe.isWSparqlEnabled', isWSparqlEnabled);
+});
+
+$('#buttonToWsparql').click(function() {
+    editor.setValue(wsparqlService.toWSparql(editor.getValue()));
 });

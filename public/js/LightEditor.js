@@ -17,6 +17,7 @@ class LightEditor {
             this.queryInputElement = this.loadConfigurationItem('queryInputElement');
             this.buildQueryElement = this.loadConfigurationItem('buildQueryElement');
             this.sparqlClient = this.loadConfigurationItem('sparqlClient');
+            this.wsparql = this.loadConfigurationItem('wsparql');
         } else {
             console.error('Configuration must be instance of object!');
         }
@@ -316,15 +317,15 @@ class LightEditor {
             });
 
             return self.sparqlFormatter.compactUri(
-                self.sparqlFormatter.addSingletonProperties(prefixPart + '\n' + 'SELECT ' + selectedVariableNames + ' WHERE {\n' + queryBody + '\n}')
+                prefixPart + '\n' + 'SELECT ' + selectedVariableNames + ' WHERE {\n' + queryBody + '\n}'
             );
         }
 
-        var queryBody = buildQuery(properties);
+        var query = self.wsparql.toWSparql(buildQuery(properties));
 
         console.log('Generated query:');
-        console.log(queryBody);
+        console.log(query);
 
-        return queryBody;
+        return query;
     }
 }

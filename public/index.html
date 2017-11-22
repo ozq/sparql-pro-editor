@@ -195,6 +195,9 @@
                     WSparql
                 </label>
             </div>
+            <!--
+            <button class="btn btn-secondary" type="button" id="buttonToWsparql">To WSparql</button>
+            -->
             <button class="btn btn-secondary" type="button" id="buttonOpenLightEditor" data-toggle="modal" data-target="#lightEditor">Light Editor</button>
         </form>
     </div>
@@ -208,8 +211,10 @@
             <div class="sparql-editor-wrapper">
                 <label>Enter your SPARQL code:</label>
                 <div class="btn-group-sm query-buttons" role="group">
+                    <!--
                     <button type="button" class="btn btn-secondary">< Prev</button>
                     <button type="button" class="btn btn-secondary">Redo ></button>
+                    -->
                     <button type="button" class="btn btn-info" id="buttonShareQuery" data-ability="backend">Share</button>
                 </div>
                 <div class="editors">
@@ -326,6 +331,7 @@
                 'owl': 'http://www.w3.org/2002/07/owl#'
             }
         }),
+        wsparql: new WSparql(),
         sparqlClient: new SparqlClient({
             graphIri: queryExectuionForm.getGraphIri(),
             requestUrl: queryExectuionForm.getEndpoint(),

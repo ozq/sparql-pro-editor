@@ -128,9 +128,6 @@ class QueryExecutionForm {
                 $('iframe.query-execution-result_response');
 
             hideLastResult();
-            console.log(endpoint);
-            console.log(parameters);
-            console.log(responseElement);
             sendRequest(endpoint, parameters, responseElement);
 
             $('#queryExecutionResult').modal('show');
