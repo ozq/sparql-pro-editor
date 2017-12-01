@@ -70,8 +70,9 @@ class LightEditor {
 
     loadProperties(classUri, callback) {
         classUri = classUri.indexOf('http') === 0 ? '<' + classUri + '>' : classUri;
+        var self = this;
 
-        var query =
+        var forwardPropertiesQuery =
             'PREFIX crm2: <http://sp7.ru/ontology/>\n' +
             'PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n' +
             'PREFIX owl: <http://www.w3.org/2002/07/owl#>\n' +
@@ -81,11 +82,50 @@ class LightEditor {
                 '?restriction owl:allValuesFrom ?class.\n' +
                 '?restriction owl:onProperty ?property.\n' +
             '}';
-
-        this.sparqlClient.execute(
-            this.sparqlFormatter.addSingletonProperties(query),
-            function (data) { callback(data) },
-            function (data) { callback(data) }
+        function forwardPropertiesLoaded(response) {
+            var forwardProperties = JSON.parse(response.responseText).results.bindings;
+            var inversePropertiesQuery =
+                'PREFIX crm2: <http://sp7.ru/ontology/>\n' +
+                'PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\n' +
+                'PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n' +
+                'PREFIX owl: <http://www.w3.org/2002/07/owl#>\n' +
+                'PREFIX crm: <http://www.cidoc-crm.org/cidoc-crm/>\n' +
+                'SELECT ?property ?class ?label ?backLabel WHERE {\n' +
+                '   ?class crm2:restriction ?property.\n' +
+                '   {\n' +
+                '       ?property owl:allValuesFrom ' + classUri + '.\n' +
+                '   }\n' +
+                '   UNION\n' +
+                '   {\n' +
+                '       ?property owl:allValuesFrom owl:Thing.\n' +
+                '   }\n' +
+                '   ?property rdfs:label ?label.\n' +
+                '   OPTIONAL {\n' +
+                '       ?property crm2:backLabel ?backLabel.\n' +
+                '   }\n' +
+                '   ?class rdf:type owl:Class.\n' +
+                '}\n';
+            function inversePropertiesLoaded(response) {
+                var inverseProperties = JSON.parse(response.responseText).results.bindings;
+                _.map(inverseProperties, function (object) {
+                    object.isInverse = true;
+                    var label = _.has(object, 'backLabel') ? object.backLabel.value : object.label.value;
+                    object.label.value = 'inv_' + label + ' (' + self.sparqlFormatter.compactUri(object.class.value, {}, false) + ')';
+                    return object;
+                });
+                var allProperties = forwardProperties.concat(inverseProperties);
+                callback(allProperties);
+            }
+            self.sparqlClient.execute(
+                self.sparqlFormatter.addSingletonProperties(inversePropertiesQuery),
+                function (response) { inversePropertiesLoaded(response) },
+                function (response) { inversePropertiesLoaded(response) },
+            );
+        }
+        self.sparqlClient.execute(
+            self.sparqlFormatter.addSingletonProperties(forwardPropertiesQuery),
+            function (response) { forwardPropertiesLoaded(response) },
+            function (response) { forwardPropertiesLoaded(response) },
         );
     }
 
@@ -102,6 +142,7 @@ class LightEditor {
                 title: data[property].label + ' (' + self.sparqlFormatter.compactUri(property, {}, false) + ')',
                 shortTitle: data[property].label,
                 class: data[property].class,
+                isInverse: data[property].isInverse,
                 property: property,
                 key: _.uniqueId()
             });
@@ -126,14 +167,15 @@ class LightEditor {
              dblclick: function(event, nodeData) {
                  self.loadProperties(nodeData.node.data.class, function (data) {
                      var parentNodeData = nodeData;
-                     var result = JSON.parse(data.responseText).results.bindings;
                      parentNodeData.node.removeChildren();
-                     result.forEach(function (item) {
+                     data.forEach(function (item) {
                          parentNodeData.node.addChildren({
                              title: item.label.value + ' (' + self.sparqlFormatter.compactUri(item.property.value, {}, false) + ')',
+                             shortTitle: item.label.value,
+                             isInverse: item.isInverse,
                              class: item.class.value,
                              property: item.property.value,
-                             shortTitle: item.label.value
+                             key: _.uniqueId()
                          });
                      });
                  });
@@ -216,11 +258,11 @@ class LightEditor {
             self.selectedClass = this.options[this.selectedIndex].value;
             self.loadProperties(self.selectedClass, function (data) {
                 var properties = [];
-                var result = JSON.parse(data.responseText).results.bindings;
-                result.forEach(function (item) {
+                data.forEach(function (item) {
                     properties[item.property.value] = {
                         label: item.label.value,
-                        class: item.class.value
+                        class: item.class.value,
+                        isInverse: item.isInverse
                     };
                 });
                 self.initPropertyTree(properties);
@@ -274,24 +316,34 @@ class LightEditor {
         var properties = {};
         selectedNodes.forEach(function (selectedNode) {
             var childProperties = [];
-            var selectedNodeChain = selectedNode.data.chain;
-            selectedNodeChain.forEach(function (chainNode) {
+            selectedNode.data.chain.forEach(function (chainNode) {
                 childProperties.push(chainNode.data.property);
                 if (_.has(properties, childProperties) === false) {
-                    _.set(properties, childProperties, {});
+                    _.set(properties, childProperties, {'isInverse': chainNode.data.isInverse});
                 }
             });
         });
 
-        //TODO: Final result must be clean, without placeholders.
         function buildOptionalPart(property, childProperties, subjectVarName, objectVarName = '', query = '') {
             objectVarName = '?' + self.defineVariableNameByUri(property, objectVarName);
             var optionalPlaceholder = '%optionalPlaceholder%';
             property = property.indexOf('http') === 0 ? '<' + property + '>' : property;
-            var newQueryPart = _.isEmpty(childProperties) ?
-                'OPTIONAL { \n' + subjectVarName + ' ' + property + ' ' + objectVarName + '\n}\n' + optionalPlaceholder :
-                'OPTIONAL { \n' + subjectVarName + ' ' + property + ' ' + objectVarName + '\n' + optionalPlaceholder + '\n}\n';
 
+            var isInverse = false;
+            if (_.has(childProperties, 'isInverse')) {
+                if (childProperties.isInverse === true) {
+                    isInverse = true;
+                }
+                delete childProperties.isInverse;
+            }
+
+            var triple = isInverse ?
+                objectVarName + ' ' + property + ' ' + subjectVarName :
+                subjectVarName + ' ' + property + ' ' + objectVarName;
+
+            var newQueryPart = _.isEmpty(childProperties) ?
+                'OPTIONAL { \n' + triple + '\n}\n' + optionalPlaceholder :
+                'OPTIONAL { \n' + triple + '\n' + optionalPlaceholder + '\n}\n';
             query = query === '' ? newQueryPart : query.replace('%optionalPlaceholder%', newQueryPart);
 
             _.forEach(childProperties, function(grandChildProperties, childProperty) {
