@@ -91,18 +91,19 @@ class LightEditor {
                 'PREFIX owl: <http://www.w3.org/2002/07/owl#>\n' +
                 'PREFIX crm: <http://www.cidoc-crm.org/cidoc-crm/>\n' +
                 'SELECT ?property ?class ?label ?backLabel WHERE {\n' +
-                '   ?class crm2:restriction ?property.\n' +
+                '   ?class crm2:restriction ?restriction.\n' +
                 '   {\n' +
-                '       ?property owl:allValuesFrom ' + classUri + '.\n' +
+                '       ?restriction owl:allValuesFrom ' + classUri + '.\n' +
                 '   }\n' +
                 '   UNION\n' +
                 '   {\n' +
-                '       ?property owl:allValuesFrom owl:Thing.\n' +
+                '       ?restriction owl:allValuesFrom owl:Thing.\n' +
                 '   }\n' +
-                '   ?property rdfs:label ?label.\n' +
+                '   ?restriction rdfs:label ?label.\n' +
                 '   OPTIONAL {\n' +
-                '       ?property crm2:backLabel ?backLabel.\n' +
+                '       ?restriction crm2:backLabel ?backLabel.\n' +
                 '   }\n' +
+                '   ?restriction owl:onProperty ?property' +
                 '   ?class rdf:type owl:Class.\n' +
                 '}\n';
             function inversePropertiesLoaded(response) {
