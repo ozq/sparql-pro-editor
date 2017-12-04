@@ -474,10 +474,4 @@ class SparqlFormatter {
 
         return 'SELECT ?label ?property WHERE { \n' + query + '\n}';
     }
-
-    addSlashes(string) {
-        return string.replace(/[\\?\\<\\>\\/\\.]/g, function (match) {
-            return "\\" + match;
-        });
-    }
 }

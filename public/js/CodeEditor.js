@@ -14,7 +14,34 @@ function buildCodeEditor() {
         }
     );
 }
-
+function getDefinedPrefixes() {
+    var result = null;
+    var definedPrefixes = [];
+    var regexp = new RegExp('PREFIX\\s(\\w+)\\:\\s(.*)', 'gmi');
+    while (result = regexp.exec(editor.getValue())) {
+        definedPrefixes[result[1]] = result[2];
+    }
+    return definedPrefixes;
+}
+function addPrefixes(prefixes) {
+    var prefixLines = [];
+    var lines = editor.getValue().split('\n');
+    var selectIndex = null;
+    var selectClauseRegexp = new RegExp('^SELECT\\s', 'gmi');
+    _.forEach(prefixes, function(uri, prefix) {
+       prefixLines.push('PREFIX ' + prefix + ': ' + '<' + uri + '>');
+    });
+    for (var i = 0; i <= lines.length; i++) {
+        if (selectClauseRegexp.test(lines[i])) {
+            selectIndex = i;
+            break;
+        }
+    }
+    if (_.isInteger(selectIndex)) {
+        lines.splice(selectIndex, 0, ...prefixLines);
+        editor.setValue(lines.join('\n'));
+    }
+}
 function getEditorValue() {
     var query = editor.getValue();
     if ($('#buttonEnableWSparql').is(':checked')) {
