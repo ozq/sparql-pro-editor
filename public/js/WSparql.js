@@ -5,6 +5,28 @@ class WSparql {
         this.wrgTripleRegexpCode = this.sf.uriRegexpCode + '\\s+' + this.sf.uriRegexpCode + '_wrg' + '\\s+' + this.sf.uriRegexpCode;
 
         /**
+         * Filter variable
+         * @param variable
+         * @returns {string}
+         */
+        this.filterVariable = function (variable) {
+            return _.trim(variable, '-');
+        };
+
+        /**
+         * Filter triple
+         * @param triple
+         * @returns {Array}
+         */
+        this.filterTriple = function (triple) {
+            var self = this;
+            triple = _.map(SparqlFormatter.getTripleParts(triple), function (variable) {
+                return self.filterVariable(variable);
+            });
+            return _.trim(triple.join(' '), '\'');
+        };
+
+        /**
          * Order of methods is important!
          * Some methods generates not clear sparql, but wsparql.
          * E.g., 'wearing' generates query with 'relation' calls, so, 'wearing' must be defined before 'relation'.
@@ -14,7 +36,7 @@ class WSparql {
                 toSparql: function (triple, postfix) {
                     var tripleParts = SparqlFormatter.getTripleParts(triple);
                     var relationPart = '';
-                    var object = tripleParts[2];
+                    var object = this.filterVariable(tripleParts[2]);
                     if (_.isUndefined(postfix)) {
                         relationPart = 'relation(' + object + ' crm2:object ' + object + 'Object' + ')\n';
                     } else {
@@ -24,10 +46,10 @@ class WSparql {
                     }
                     relationPart += 'relation(' + object + ' crm2:date_from ' + '?dateFrom' + ')\n';
                     relationPart += 'relation(' + object + ' crm2:date_to ' + '?dateTo' + ')\n';
-                    var query = 'OPTIONAL {\n' + triple + '\n' + relationPart + '\n}';
+                    var query = 'OPTIONAL {\n' + this.filterTriple(triple) + '\n' + relationPart + '\n}';
                     return {
                         query: query,
-                        whereVariables: [tripleParts[2]]
+                        whereVariables: tripleParts[2].charAt(0) !== '-' ? [tripleParts[2]] : []
                     }
                 }
             },
@@ -36,32 +58,32 @@ class WSparql {
                     labelDepth = _.toInteger(labelDepth);
                     var tripleParts = SparqlFormatter.getTripleParts(triple);
                     var labelPlaceholder = '%labelPlaceholder%';
-                    var objectLabel = WSparql.toLabelVariable(tripleParts[2]);
+                    var subject = this.filterVariable(tripleParts[2]);
+                    var objectLabel = WSparql.toLabelVariable(subject);
                     var labelQueryPart = labelPlaceholder;
                     var currentLabelQueryPart = '';
-                    var subject = tripleParts[2];
                     for (var i = 1; i <= labelDepth; i++) {
-                        var object = i === labelDepth ? objectLabel : tripleParts[2] + '_label_' + i;
+                        var object = i === labelDepth ? objectLabel : subject + '_label_' + i;
                         var currentLabelPlaceholder = i === labelDepth ? '' : labelPlaceholder;
                         currentLabelQueryPart = 'OPTIONAL {\n' + subject + ' rdfs:label ' + object + '.\n' + currentLabelPlaceholder + '\n}';
                         labelQueryPart = _.replace(labelQueryPart, labelPlaceholder, currentLabelQueryPart);
                         subject = object;
                     }
-                    var query = _.trim(triple, '\'') + '\n' + labelQueryPart;
+                    var query = this.filterTriple(triple) + '\n' + labelQueryPart;
 
                     return {
                         query: query,
-                        whereVariables: [tripleParts[2], objectLabel]
+                        whereVariables: tripleParts[2].charAt(0) !== '-' ? [tripleParts[2], objectLabel] : []
                     }
                 }
             },
             relation: {
                 toSparql: function (triple, labelDepth = 1) {
-                    var base = this.methods.requiredRelation.toSparql(triple, labelDepth);
-                    var query = 'OPTIONAL {\n' + base.query + '\n}';
+                    var requiredRelationResult = this.methods.requiredRelation.toSparql.call(this, triple, labelDepth);
+                    var query = 'OPTIONAL {\n' + requiredRelationResult.query + '\n}';
                     return {
                         query: query,
-                        whereVariables: base.whereVariables
+                        whereVariables: requiredRelationResult.whereVariables
                     }
                 }
             },
@@ -102,7 +124,7 @@ class WSparql {
             _.forEach(methodWhereVariablesGroup, function(methodWhereVariables) {
                 query = query.replace(whereVariablesRegexp, function (match, c1, queryVariables, c2) {
                     queryVariables = queryVariables.split(/\s+/);
-                    var wherePart = _.uniq(queryVariables.concat(methodWhereVariables)).join(' ').replace('*', '');
+                    var wherePart = _.uniq(queryVariables.concat(methodWhereVariables)).join(' ');
                     return  c1 + ' ' + wherePart + ' ' + c2;
                 });
             });
