@@ -51,7 +51,8 @@ class LightEditor {
             'SELECT ?class ?label WHERE {\n' +
                 '?class rdf:type owl:Class.\n' +
                 '?class rdfs:label ?label.\n' +
-            '}';
+            '}\n' +
+            'ORDER BY ASC(?label)';
 
         var loadCallback = function (data) {
             var result = JSON.parse(data.responseText).results.bindings;
