@@ -174,11 +174,16 @@ class WSparql {
                                     triple: line,
                                     line: i,
                                     optionalDepth: inRootOptionalPartCounter,
-                                    object: tripleParts[2]
+                                    object: tripleParts[2],
+                                    subject: tripleParts[0],
                                 };
                                 var tripleDataItem = _.find(tripleData, function (data) { return data.object === tripleParts[0]; });
                                 if (tripleDataItem) {
-                                    tripleDataItem.labels.push(labelObject);
+                                    var tripleBySubject = _.find(tripleData, function (data) { return data.subject === tripleParts[0]; });
+                                    // prevent problem with reversed triples
+                                    if (!tripleBySubject) {
+                                        tripleDataItem.labels.push(labelObject);
+                                    }
                                 } else {
                                     var tripleDataItem = _.find(tripleData, function (data) { return _.isEmpty(data.labels) === false && _.last(data.labels).object === tripleParts[0]; });
                                     if (tripleDataItem) {
@@ -188,6 +193,7 @@ class WSparql {
                             } else {
                                 tripleData.push({
                                     object: tripleParts[2],
+                                    subject: tripleParts[0],
                                     optionalDepth: inRootOptionalPartCounter,
                                     triple: line,
                                     line: i,
@@ -226,7 +232,7 @@ class WSparql {
                     _.forEach(_.uniq(tripleItem.labels), function(labelItem) {
                         lines[labelItem.line] = '';
                     });
-                    lines[tripleItem.line] = 'requiredRelation(' + '\'' + tripleItem.triple + '\', ' + labelDepth + ')';
+                    lines[tripleItem.line] = 'requiredRelation(' + tripleItem.triple + ', ' + labelDepth + ')';
                     selectVariables.push(tripleItem.object);
                 }
             });
@@ -385,9 +391,8 @@ class WSparql {
                         _.forEach(wearingItem.lines, function(lineNumber) {
                             lines[lineNumber] = '';
                         });
-                        var postfix = wearingItem.postfixData && wearingItem.postfixData.triple ?
-                            '\'' + wearingItem.postfixData.triple + '\'' : '';
-                        var data = _.compact(['\'' + wearingItem.triple + '\'', postfix]);
+                        var postfix = wearingItem.postfixData && wearingItem.postfixData.triple ? wearingItem.postfixData.triple : '';
+                        var data = _.compact([wearingItem.triple, postfix]);
                         lines[inputLineNumber] = 'wearing(' + data.join(', ') + ');';
                         if (wearingItem.hasSiblings === false) {
                             if (wearingItem.optionalPartStartLineNumber && wearingItem.optionalPartFinishLineNumber) {
