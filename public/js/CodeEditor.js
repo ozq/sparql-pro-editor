@@ -10,7 +10,8 @@ function buildCodeEditor() {
         {
             mode: 'sparql11',
             indentUnit: 4,
-            createShareLink: false
+            createShareLink: false,
+            autocompleters: ["properties", "classes", "variables"]
         }
     );
 }
