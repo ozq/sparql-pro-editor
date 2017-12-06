@@ -21,11 +21,13 @@ class CommonPrefixes {
         var commonPrefixesArray = [];
 
         if (commonPrefixesContent) {
-            commonPrefixesContent.forEach(function(item, i) {
-                var prefixData = item.replace(new RegExp('PREFIX\\s*', 'i'), '');
-                var matchedPrefixData = prefixData.match(new RegExp('(\\w+)\\s*:\\s*\<(.+)\>'));
-                if (matchedPrefixData) {
-                    commonPrefixesArray[matchedPrefixData[1]] = matchedPrefixData[2];
+            commonPrefixesContent.forEach(function (item) {
+                if (item) {
+                    var prefixData = item.replace(new RegExp('PREFIX\\s*', 'i'), '');
+                    var matchedPrefixData = prefixData.match(new RegExp('(\\w+)\\s*:\\s*\<(.+)\>'));
+                    if (matchedPrefixData) {
+                        commonPrefixesArray[matchedPrefixData[1]] = matchedPrefixData[2];
+                    }
                 }
             });
         }
