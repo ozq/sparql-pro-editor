@@ -43,22 +43,83 @@ class LightEditor {
     loadClasses() {
         var self = this;
         self.classes = [];
+        self.classesStructure = {};
 
         var query =
             'PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\n' +
             'PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n' +
             'PREFIX owl: <http://www.w3.org/2002/07/owl#>' +
-            'SELECT ?class ?label WHERE {\n' +
+            'SELECT ?class ?label ?parent WHERE {\n' +
                 '?class rdf:type owl:Class.\n' +
                 '?class rdfs:label ?label.\n' +
+                'OPTIONAL {\n' +
+                    '?class rdfs:subClassOf ?parent.\n' +
+                '}\n' +
             '}\n' +
             'ORDER BY ASC(?label)';
 
         var loadCallback = function (data) {
             var result = JSON.parse(data.responseText).results.bindings;
             result.forEach(function(item) {
-                self.classes[item.class.value] = item.label.value;
+                if (item.label.value) {
+                    self.classes.push({
+                        'class': item.class.value,
+                        'label': item.label.value,
+                        'parent': item.parent ? item.parent.value : null,
+                    });
+                }
             });
+
+            function getParentsChain (className, chain = []) {
+                if (!className) {
+                    return _.reverse(chain);
+                } else {
+                    chain.push(className);
+                    var classItem = _.find(self.classes, function (item) { return item.class === className; });
+                    if (classItem && classItem.parent !== className) {
+                        return getParentsChain(classItem.parent, chain);
+                    } else {
+                        return _.reverse(chain);
+                    }
+                }
+            }
+
+            self.classes.forEach(function (item) {
+                var chain = getParentsChain(item.parent);
+                if (chain.length >= 1) {
+                    chain = chain.join('*children*').split('*');
+                    var parentItem = _.find(self.classes, function (o) { return o.class === item.parent; });
+                    var parentLabel = parentItem ? parentItem.label : '';
+                    _.set(self.classesStructure, _.concat(chain, 'label'), parentLabel);
+                    chain.push('children');
+                    var itemStructure = _.get(self.classesStructure, chain, {});
+                    if (_.isEmpty(itemStructure[item.class]) === true) {
+                        itemStructure[item.class] = {
+                            label: item.label,
+                            children: {}
+                        };
+                    }
+                    _.set(self.classesStructure, chain, itemStructure);
+                } else {
+                    if (_.has(self.classesStructure, item.class) === false) {
+                        self.classesStructure[item.class] = {
+                            label: item.label,
+                            children: {}
+                        };
+                    }
+                }
+            });
+
+            var keysSorted = Object.keys(self.classesStructure).sort(function (a, b) {
+                return self.classesStructure[a].label.localeCompare(self.classesStructure[b].label);
+            });
+            var sortedStructure = {};
+            keysSorted.forEach(function (className) {
+                sortedStructure[className] = self.classesStructure[className];
+            });
+
+            self.classesStructure = sortedStructure;
+
             self.initClassesSelect();
         };
 
@@ -246,14 +307,21 @@ class LightEditor {
         var self = this;
         var classesSelect = document.querySelector(self.classesSelectElement);
 
-        for (var key in self.classes) {
-            var label = self.classes[key];
+        function buildOptionItem(className, item, depth = 0) {
             var option = document.createElement('option');
-            if (label) {
-                option.innerHTML = label + ' (' + self.sparqlFormatter.compactUri(key, {}, false) + ')';
-                option.value = key;
-                classesSelect.appendChild(option);
+            option.innerHTML = '&nbsp;'.repeat(depth * 6) + item.label + ' (' + self.sparqlFormatter.compactUri(className, {}, false) + ')';
+            option.value = className;
+            classesSelect.appendChild(option);
+            for (className in item.children) {
+                depth++;
+                var childItem = item.children[className];
+                buildOptionItem(className, childItem, depth);
+                depth--;
             }
+        }
+
+        for (var className in self.classesStructure) {
+            buildOptionItem(className, self.classesStructure[className]);
         }
 
         classesSelect.addEventListener('change', function () {
