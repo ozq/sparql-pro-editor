@@ -2,16 +2,21 @@ class SparqlFormatter {
     constructor(options) {
         //TODO: check regexp, they may be not "clear" (match excess whitespaces and dots)
         this.triplePairsRegexpCode = '(?:(([?<$\\w][\\w:\\/\\.\\-#>]+)[\\s\\.]+){3}){2}';
-        this.tripleLineRegexpCode = '(?:(?:[\\w]*[?<$:][\\w:\\/\\.\\-#>]+)[\\s\\.]+){3}';
-        this.tripleElementsRegexpCode = '[?<$\\w:][\\w:\\/\\.\\-#>]+[?!\\w>]';
+        this.uriRegexpCode = '[\\w]*[?<$:][\\w:\\/\\.\\-#>]+';
+        this.tripleLineRegexpCode = '(?:(?:' + this.uriRegexpCode + ')[\\s\\.]*){3}';
+        this.tripleElementsRegexpCode = '[?<$\\w:][\\w:\\/\\.\\-#>]*[?!\\w>]';
         this.allUriRegexpCode = '[\\w<]+\\:[\\w#\\/\\.-\ v\>-]+';
         this.singletonPropertyUri = '\<http://www.w3.org/1999/02/22-rdf-syntax-ns#singletonPropertyOf>';
         this.allPrefixesRegexpCode = '[\\w]+(?=:(?!\\/\\/))';
         this.excessLineRegexpCode = '(\\n\\s*){2}[^\\S\\t]';
         this.allIndentsRegexpCode = '^[\\t ]+(?![\\n])(?=[\\S])';
         this.variablesRegexpCode = '[?$]\\w+';
+        this.rdfTypeUri = '(<http:\\/\\/www\\.w3\\.org\\/1999\\/02\\/22-rdf-syntax-ns#type>|rdf:type)';
+        this.labelUri = '^(<http:\\/\\/www\\.w3\\.org\\/2000\\/01\\/rdf-schema#label>|rdfs:label)$';
+        this.tripleElementRegexpCode = '^\\s*([?<$\\w][\\w:\\/\\.\\-#>]+)\\s*$';
 
         this.indentLength = options && options.indentLength ? options.indentLength : 4;
+        this.additionalPrefixes = options && options.additionalPrefixes ? options.additionalPrefixes : {};
     }
 
     beautify(content) {
@@ -58,7 +63,9 @@ class SparqlFormatter {
     }
 
     removeExcessLines(content) {
-        return content.replace(new RegExp(this.excessLineRegexpCode, 'gi'), '\n');
+        content = content.replace(new RegExp(this.excessLineRegexpCode, 'gi'), '\n');
+        var contentWithoutExcessLines =_.compact(content.split('\n'));
+        return contentWithoutExcessLines.join('\n');
     }
 
     removeExcessLinesInOperators(content) {
@@ -148,10 +155,15 @@ class SparqlFormatter {
         return content;
     }
 
-    compactUri(content, prefixes) {
+    compactUri(content, prefixes = {}, isStrict = true) {
+        prefixes = _.merge(this.additionalPrefixes, prefixes);
         Object.keys(prefixes).map(function(prefix) {
             var url = prefixes[prefix];
-            var replacedContent = content.replace(new RegExp('\<' + url + '(\\w+)\>', 'gi'), function(match, property) {
+            var regExp = isStrict === true ?
+                new RegExp('\<' + url + '(\\w+)\>', 'gi') :
+                new RegExp(url + '(\\w+)', 'gi');
+
+            var replacedContent = content.replace(regExp, function(match, property) {
                 return prefix + '\:' + property;
             });
             replacedContent ? content = replacedContent : false;
@@ -217,7 +229,10 @@ class SparqlFormatter {
         };
     }
 
-    addSingletonProperties(content) {
+    addSingletonProperties(content, rebuild = false, spPostfix = '', spPrefix = 'sp_') {
+        if (rebuild === true) {
+            content = sparqlFormatter.removeSingletonProperties(content).result;
+        }
         var tripleLineRegexp = new RegExp(this.tripleLineRegexpCode, 'gi');
         var tripleElementsRegexp = new RegExp(this.tripleElementsRegexpCode, 'gi');
         var singletonPropertyNumber = 0;
@@ -230,7 +245,7 @@ class SparqlFormatter {
             }
 
             singletonPropertyNumber++;
-            var singletonProperty = '?sp_' + singletonPropertyNumber;
+            var singletonProperty = '?' + spPrefix + singletonPropertyNumber + spPostfix;
 
             // Get triple elements
             var triplePairElements = triple.match(tripleElementsRegexp);
@@ -301,21 +316,162 @@ class SparqlFormatter {
 
     getAllPredicatesAndObjects(content) {
         var predicatesAndObjects = [];
-        var excessWhitespacesRegexp = new RegExp('[\\s\.]*$', 'gm');
         var tripleLines = content.match(new RegExp(this.tripleLineRegexpCode, 'g'));
 
         if (tripleLines) {
+            var self = this;
             var triples = tripleLines.map(function(triple) {
-                return triple.replace(excessWhitespacesRegexp, '');
+                return self.removeExcessWhitespaces(triple);
             });
 
             triples.forEach(function(triple) {
-                var tripleParts = triple.split(/\s/g);
+                var tripleParts = SparqlFormatter.getTripleParts(triple);
                 predicatesAndObjects.push(tripleParts[1]);
                 predicatesAndObjects.push(tripleParts[2]);
             });
         }
 
         return _.uniq(predicatesAndObjects);
+    }
+
+    replaceEmptyOperators(query) {
+        var newQuery = query.replace(new RegExp('\\s*\\w+\\s*{\\s*}', 'gmi'), function () {
+            return '';
+        });
+        if (newQuery === query) {
+            return newQuery;
+        } else {
+            return this.replaceEmptyOperators(newQuery);
+        }
+    }
+
+    /**
+     * @param value
+     * @returns {boolean}
+     */
+    isVariable(value) {
+        var regexp = new RegExp(this.variablesRegexpCode, 'i');
+        return regexp.test(value);
+    }
+
+    /**
+     * @param content
+     */
+    getFirstVariable(content) {
+        var regexp = new RegExp('(\\?\\w+)', 'i');
+        return content.match(regexp)[1];
+    }
+
+    /**
+     * @param content
+     */
+    removeExcessWhitespaces(content) {
+        var regexp = new RegExp('[\\s\.]*$', 'gm');
+        return content.replace(regexp, '');
+    }
+
+    /**
+     * @param triple
+     * @returns {Array|*}
+     */
+    static getTripleParts(triple) {
+        var tripleParts = triple.split(/\s/g).map(function(triplePart) {
+            return _.trim(triplePart, '\'');
+        });
+        return _.compact(tripleParts);
+    }
+
+    /**
+     * @param uri
+     * @returns {string}
+     */
+    static getPrefix(uri) {
+        return _.split(uri, ':')[0] + ':';
+    }
+
+    /**
+     * @param content
+     * @param value
+     */
+    getFirstTripleByValue(content, value) {
+        var regexp = new RegExp('^\\s*\\?' + value + '.*', 'mi');
+        return content.match(regexp)[0];
+    }
+
+    /**
+     * @param value
+     * @returns {boolean}
+     */
+    isRdfTypeUri(value) {
+        var regexp = new RegExp(this.rdfTypeUri, 'i');
+        return regexp.test(value);
+    }
+
+    /**
+     * @param value
+     * @returns {boolean}
+     */
+    isLabelUri(value) {
+        var regexp = new RegExp(this.labelUri, 'i');
+        return regexp.test(value);
+    }
+
+    /**
+     * @param content
+     * @param subject
+     * @param predicatesChain
+     * @param rootClass
+     * @returns {{rootClass: *, predicatesChain: *}}
+     */
+    buildPredicatesChain(content, subject, predicatesChain, rootClass) {
+        if (_.isString(rootClass)) {
+            return {
+                'rootClass': rootClass,
+                'predicatesChain': _.reverse(predicatesChain)
+            };
+        }
+
+        var firstFoundedLine = _.trim(this.getFirstTripleByValue(content, subject));
+        var foundedTripleParts = SparqlFormatter.getTripleParts(firstFoundedLine);
+        var lineSubject = foundedTripleParts[0];
+        var linePredicate = foundedTripleParts[1];
+        var lineObject = _.trimEnd(foundedTripleParts[2], '.');
+
+        if (this.isVariable(linePredicate) ) {
+            var getObjectBySubjectRegexp = new RegExp('^\\s*\\' + linePredicate + '\\s+\\S+\\s+([\\S]+)', 'gm');
+            var match = getObjectBySubjectRegexp.exec(content);
+            linePredicate = _.trimEnd(match[1], '.');
+        }
+        if (subject === lineSubject) {
+            if (this.isRdfTypeUri(linePredicate)) {
+                return this.buildPredicatesChain(content, lineSubject, predicatesChain, lineObject);
+            } else {
+                console.log('Wrong sparql syntax...');
+            }
+        }
+        if (subject === lineObject) {
+            predicatesChain.push(linePredicate);
+            return this.buildPredicatesChain(content, lineSubject, predicatesChain);
+        }
+    }
+
+    buildQueryByPredicatesChain(chainData) {
+        var query = '';
+        var currentObject = chainData.rootClass;
+        _.forEach(chainData.predicatesChain, function(predicate, i) {
+            currentObject = '?class_' + i;
+            var currentRestriction = '?restriction_' + i;
+            var previousKey = i - 1;
+            var previousClass = i === 0 ? chainData.rootClass : '?class_' + previousKey;
+            query +=
+                previousClass + ' crm2:restriction ' + currentRestriction + '.\n' +
+                currentRestriction + ' owl:onProperty ' + predicate + '.\n' +
+                currentRestriction + ' owl:allValuesFrom ' + currentObject + '.\n';
+        });
+        query += currentObject + ' crm2:restriction ?restriction_final.\n' +
+            '?restriction_final rdfs:label ?label.\n' +
+            '?restriction_final owl:onProperty ?property.\n';
+
+        return 'SELECT ?label ?property WHERE { \n' + query + '\n}';
     }
 }

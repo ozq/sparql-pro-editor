@@ -1,6 +1,6 @@
-var queryExectuionForm = new QueryExecutionForm('#formExecuteQuery', '#selectQuerySettings', new QuerySettingsRepository());
 var queryHistoryLocalRepository = new QueryHistoryLocalRepository();
 var queryLeavingConfirmation = new QueryLeavingConfirmation('#queryLeavingConfirmation');
+var wsparqlService = new WSparql();
 var commonPrefixes = new CommonPrefixes(editor);
 var sparqlFormatter = new SparqlFormatter({
     indentLength: editor.indentLength
@@ -33,6 +33,11 @@ if (appConfig.isBackendInstalled) {
 if (!appConfig.isBackendInstalled) {
     $('[data-ability=backend]').attr('disabled', 'disabled').attr('title', 'This function available only on full version');
     $('#shared-query-list').hide();
+}
+
+var isWSparqlEnabled = localStorage.getItem('spe.isWSparqlEnabled');
+if (isWSparqlEnabled === 'true') {
+    $('#buttonEnableWSparql').prop('checked', true);
 }
 
 $('#buttonAddLocalQuery').click(function() {
@@ -323,3 +328,108 @@ function showSpCompactedView() {
         });
     }
 }
+
+/**
+ * Insert content at current cursor position
+ * @param editor
+ * @param str
+ */
+function insertString(editor, str) {
+    var selection = editor.getSelection();
+    if(selection.length>0){
+        editor.replaceSelection(str);
+    }
+    else{
+        var doc = editor.getDoc();
+        var cursor = doc.getCursor();
+        var pos = {
+            line: cursor.line,
+            ch: cursor.ch
+        };
+        doc.replaceRange(str, pos);
+    }
+}
+
+/**
+ * Property autocomplete (ctrl+space handler)
+ */
+function autocompletePredicate() {
+    var sparqlClient = new SparqlClient({
+        graphIri: queryExectuionForm.getGraphIri(),
+        requestUrl: queryExectuionForm.getEndpoint(),
+        requestType: 'POST',
+        requestDataType: 'jsonp',
+        debugMode: 'on',
+        responseFormat: 'json',
+    });
+
+    // Define select
+    var autocompleteSelect = $('select[name="predicate-autocomplete"]');
+    autocompleteSelect.empty();
+
+    // Define current subject
+    var currentSubject = sparqlFormatter.getFirstVariable(editor.doc.getLine(editor.getCursor().line));
+    if (currentSubject === null) {
+        $.notify('<strong>Subject for autocomplete not found!</strong><br>', { type: 'warning', placement: { from: 'bottom', align: 'right' } });
+        return false;
+    } else {
+        // Build query
+        var queryData = sparqlFormatter.buildPredicatesChain(getEditorValue(), currentSubject, [], null);
+        var query = sparqlFormatter.addSingletonProperties(sparqlFormatter.expandUri(sparqlFormatter.buildQueryByPredicatesChain(queryData), getAllPrefixes()));
+
+        console.log('Autocomplete query:');
+        console.log(query);
+
+        // Validate request params
+        if (_.isEmpty(sparqlClient.requestUrl) || _.isEmpty(sparqlClient.graphIri)) {
+            $.notify('<strong>Endpoint and Graph IRI must be defined!</strong><br>', { type: 'warning', placement: { from: 'bottom', align: 'right' } });
+            return false;
+        }
+
+        // Get autocomplete items and fill the select
+        sparqlClient.execute(
+            query,
+            function (data) {
+                var autocompleteItems = data.results.bindings;
+                if (!_.isEmpty(autocompleteItems)) {
+                    var options = '';
+                    _.forEach(autocompleteItems, function(item) {
+                        options += '<option value="'+ item.property.value + '">' + item.label.value + ' (' + item.property.value + ')' + '</option>';
+                    });
+                    autocompleteSelect.append(options);
+                } else {
+                    $.notify('<strong>Properties not found!</strong><br>', { type: 'warning', placement: { from: 'bottom', align: 'right' } });
+                }
+            },
+            function (data) {
+                console.log(data);
+            }
+        );
+    }
+}
+
+$('#buttonAutocompletePredicate').click(function(e) {
+    autocompletePredicate();
+});
+document.addEventListener("keydown", function (zEvent) {
+    if (zEvent.ctrlKey  &&  zEvent.keyCode === 32) {
+        autocompletePredicate();
+    }
+});
+
+/**
+ * Handle autocomplete select changing
+ */
+$('select[name="predicate-autocomplete"]').change(function(e) {
+    insertString(editor, '<' + $(this).val() + '>');
+});
+
+$('#buttonEnableWSparql').click(function(e) {
+    var isWSparqlEnabled = $(this).is(':checked');
+    console.log(isWSparqlEnabled);
+    localStorage.setItem('spe.isWSparqlEnabled', isWSparqlEnabled);
+});
+
+$('#buttonToWsparql').click(function() {
+    editor.setValue(wsparqlService.toWSparql(editor.getValue()));
+});
