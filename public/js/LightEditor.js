@@ -1,13 +1,22 @@
+/**
+ * LightEditor
+ */
 class LightEditor {
+    /**
+     * @param configuration
+     */
     constructor(configuration) {
         this.isInitialPropertiesInitialized = false;
         this.loadConfiguration(configuration);
         this.initSelectedPropertyTree();
         this.loadClasses();
-        this.loadInitialQuery();
+        this.loadMinusedVariables();
         this.initBuildQueryButton();
     }
 
+    /**
+     * @param configuration
+     */
     loadConfiguration(configuration) {
         if (typeof configuration === 'object') {
             this.configuration = configuration;
@@ -27,6 +36,12 @@ class LightEditor {
         }
     }
 
+    /**
+     * @param option
+     * @param defaultValue
+     * @param type
+     * @returns {*}
+     */
     loadConfigurationItem(option, defaultValue, type) {
         if (this.configuration.hasOwnProperty(option) && this.configuration[option]) {
             if (typeof type !== 'undefined') {
@@ -44,18 +59,26 @@ class LightEditor {
         }
     }
 
-    loadInitialQuery() {
+    /**
+     * Define minusedVariables depends on initialQuery
+     * It is useful when we rebuild query and should decide which variable was implied as minused
+     */
+    loadMinusedVariables() {
         if (this.initialQuery && _.isEmpty(this.minusedVariables) === true) {
-            this.minusedVariables = this.sparqlFormatter.getMinusedVariables(this.initialQuery);
+            this.minusedVariables = this.wsparql.getMinusedVariables(this.initialQuery);
         }
     }
 
+    /**
+     * Load class list from server
+     * and trigger classes select initializing
+     */
     loadClasses() {
-        var self = this;
+        let self = this;
         self.classes = [];
         self.classesStructure = {};
 
-        var query =
+        let query =
             'PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\n' +
             'PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n' +
             'PREFIX owl: <http://www.w3.org/2002/07/owl#>' +
@@ -68,8 +91,8 @@ class LightEditor {
             '}\n' +
             'ORDER BY ASC(?label)';
 
-        var loadCallback = function (data) {
-            var result = JSON.parse(data.responseText).results.bindings;
+        let loadCallback = function (data) {
+            let result = JSON.parse(data.responseText).results.bindings;
             result.forEach(function(item) {
                 if (item.label.value) {
                     self.classes.push({
@@ -85,7 +108,7 @@ class LightEditor {
                     return _.reverse(chain);
                 } else {
                     chain.push(className);
-                    var classItem = _.find(self.classes, function (item) { return item.class === className; });
+                    let classItem = _.find(self.classes, function (item) { return item.class === className; });
                     if (classItem && classItem.parent !== className) {
                         return getParentsChain(classItem.parent, chain);
                     } else {
@@ -95,14 +118,14 @@ class LightEditor {
             }
 
             self.classes.forEach(function (item) {
-                var chain = getParentsChain(item.parent);
+                let chain = getParentsChain(item.parent);
                 if (chain.length >= 1) {
                     chain = chain.join('*children*').split('*');
-                    var parentItem = _.find(self.classes, function (o) { return o.class === item.parent; });
-                    var parentLabel = parentItem ? parentItem.label : '';
+                    let parentItem = _.find(self.classes, function (o) { return o.class === item.parent; });
+                    let parentLabel = parentItem ? parentItem.label : '';
                     _.set(self.classesStructure, _.concat(chain, 'label'), parentLabel);
                     chain.push('children');
-                    var itemStructure = _.get(self.classesStructure, chain, {});
+                    let itemStructure = _.get(self.classesStructure, chain, {});
                     if (_.isEmpty(itemStructure[item.class]) === true) {
                         itemStructure[item.class] = {
                             label: item.label,
@@ -120,10 +143,10 @@ class LightEditor {
                 }
             });
 
-            var keysSorted = Object.keys(self.classesStructure).sort(function (a, b) {
+            let keysSorted = Object.keys(self.classesStructure).sort(function (a, b) {
                 return self.classesStructure[a].label.localeCompare(self.classesStructure[b].label);
             });
-            var sortedStructure = {};
+            let sortedStructure = {};
             keysSorted.forEach(function (className) {
                 sortedStructure[className] = self.classesStructure[className];
             });
@@ -140,11 +163,18 @@ class LightEditor {
         );
     }
 
+    /**
+     * Load properties of passed class URI
+     * and execute passed callback after that
+     *
+     * @param classUri
+     * @param callback
+     */
     loadProperties(classUri, callback) {
         classUri = classUri.indexOf('http') === 0 ? '<' + classUri + '>' : classUri;
-        var self = this;
+        let self = this;
 
-        var forwardPropertiesQuery =
+        let forwardPropertiesQuery =
             'PREFIX crm2: <http://sp7.ru/ontology/>\n' +
             'PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n' +
             'PREFIX owl: <http://www.w3.org/2002/07/owl#>\n' +
@@ -155,8 +185,8 @@ class LightEditor {
                 '?restriction owl:onProperty ?property.\n' +
             '}';
         function forwardPropertiesLoaded(response) {
-            var forwardProperties = JSON.parse(response.responseText).results.bindings;
-            var inversePropertiesQuery =
+            let forwardProperties = JSON.parse(response.responseText).results.bindings;
+            let inversePropertiesQuery =
                 'PREFIX crm2: <http://sp7.ru/ontology/>\n' +
                 'PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\n' +
                 'PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n' +
@@ -178,14 +208,14 @@ class LightEditor {
                 '   ?class rdf:type owl:Class.\n' +
                 '}\n';
             function inversePropertiesLoaded(response) {
-                var inverseProperties = JSON.parse(response.responseText).results.bindings;
+                let inverseProperties = JSON.parse(response.responseText).results.bindings;
                 _.map(inverseProperties, function (object) {
                     object.isInverse = true;
-                    var label = _.has(object, 'backLabel') ? object.backLabel.value : object.label.value;
+                    let label = _.has(object, 'backLabel') ? object.backLabel.value : object.label.value;
                     object.label.value = 'inv_' + label + ' (' + self.sparqlFormatter.compactUri(object.class.value, {}, false) + ')';
                     return object;
                 });
-                var allProperties = forwardProperties.concat(inverseProperties);
+                let allProperties = forwardProperties.concat(inverseProperties);
                 callback(allProperties);
             }
             self.sparqlClient.execute(
@@ -201,15 +231,21 @@ class LightEditor {
         );
     }
 
+    /**
+     * Get query from DOM-element
+     */
     getQuery() {
         return document.querySelector(this.queryInputElement).value;
     }
 
+    /**
+     * @param data
+     */
     initPropertyTree(data = []) {
-        var self = this;
-        var propertyTreeData = [];
+        let self = this;
+        let propertyTreeData = [];
 
-        for (var property in data) {
+        for (let property in data) {
             propertyTreeData.push({
                 title: data[property].label + ' (' + self.sparqlFormatter.compactUri(property, {}, false) + ')',
                 shortTitle: data[property].label,
@@ -220,8 +256,8 @@ class LightEditor {
             });
         }
 
-        var propertyTreeElement = $(this.propertyTreeElement);
-        var selectedPropertyTreeElement = $(this.selectedPropertyTreeElement);
+        let propertyTreeElement = $(this.propertyTreeElement);
+        let selectedPropertyTreeElement = $(this.selectedPropertyTreeElement);
 
         propertyTreeElement.fancytree({
             checkbox: true,
@@ -238,9 +274,9 @@ class LightEditor {
             },
             dblclick: function(event, nodeData) {
                 self.loadProperties(nodeData.node.data.class, function (data) {
-                    var parentNodeData = nodeData;
+                    let parentNodeData = nodeData;
                     data.forEach(function (item) {
-                        var foundNode = parentNodeData.node.findFirst(function (node) {
+                        let foundNode = parentNodeData.node.findFirst(function (node) {
                             return node.data.property === item.property.value;
                         });
                         if (!foundNode) {
@@ -258,24 +294,24 @@ class LightEditor {
             },
             select: function(event, nodeData) {
                 function goThrowParents(node, chain) {
-                    var parentNode = node.getParent();
+                    let parentNode = node.getParent();
                     if (parentNode) {
                         chain.push(node);
                         goThrowParents(parentNode, chain);
                     }
                 }
 
-                var node = nodeData.node;
-                var chain = [];
+                let node = nodeData.node;
+                let chain = [];
                 goThrowParents(node, chain);
                 chain.reverse();
 
                 if (node.isSelected()) {
-                    var selectedPropertyTitle = [];
+                    let selectedPropertyTitle = [];
                     chain.forEach(function (item) {
                         selectedPropertyTitle.push(item.data.shortTitle);
                     });
-                    var foundNode = selectedPropertyTreeElement.fancytree('getRootNode').addChildren({
+                    let foundNode = selectedPropertyTreeElement.fancytree('getRootNode').addChildren({
                         title: selectedPropertyTitle.join('.'),
                         chain: chain
                     });
@@ -299,15 +335,20 @@ class LightEditor {
         }
     }
 
+    /**
+     * Build initialPropertiesTree depends on passed initialProperties
+     * and triggers classes select changing on defined root class
+     * @returns {*}
+     */
     defineInitialPropertiesTree() {
-        var initialPropertiesTree = null;
+        let initialPropertiesTree = null;
         if (this.initialProperties) {
-            var i;
-            var propertyPaths = [];
+            let i;
+            let propertyPaths = [];
             initialPropertiesTree = this.initialProperties;
             for (i = initialPropertiesTree.length - 1; i >= 0; i -= 1) {
-                var currentItem = initialPropertiesTree[i];
-                var parentItem = _.find(initialPropertiesTree, function (foundItem) {
+                let currentItem = initialPropertiesTree[i];
+                let parentItem = _.find(initialPropertiesTree, function (foundItem) {
                     return foundItem.node.data.variableName === currentItem.node.data.parentVariableName;
                 });
                 if (!parentItem) {
@@ -324,7 +365,7 @@ class LightEditor {
         this.initialPropertiesTree = initialPropertiesTree;
 
         if (_.head(initialPropertiesTree)) {
-            var rootClass = _.head(initialPropertiesTree).node.data.class;
+            let rootClass = _.head(initialPropertiesTree).node.data.class;
             self.selectedClass = rootClass;
             $(this.classesSelectElement).val(rootClass).change();
         }
@@ -332,16 +373,19 @@ class LightEditor {
         return this.initialPropertiesTree;
     }
 
+    /**
+     * Build property tree depends on initialPropertiesTree data
+     */
     buildInitialPropertiesTree() {
-        var self = this;
+        let self = this;
         function pushNodes(node, treeNode = null) {
             if (node.data.parentVariableName === false) {
                 treeNode = $(self.propertyTreeElement).fancytree('getTree').getRootNode();
             } else {
-                var newNodeData = node.data;
+                let newNodeData = node.data;
                 newNodeData.key = _.uniqueId();
                 newNodeData.title = newNodeData.shortTitle + ' (' + self.sparqlFormatter.compactUri(newNodeData.property) + ')';
-                var foundNode = treeNode.findFirst(function (node) {
+                let foundNode = treeNode.findFirst(function (node) {
                     return node.data.property === newNodeData.property;
                 });
 
@@ -369,6 +413,9 @@ class LightEditor {
         });
     }
 
+    /**
+     * @param data
+     */
     initSelectedPropertyTree(data = []) {
         $(this.selectedPropertyTreeElement).fancytree({
             source: data,
@@ -385,8 +432,7 @@ class LightEditor {
                     return true;
                 },
                 dragEnter: function(node, data) {
-                    if (node.parent !== data.otherNode.parent) return false;
-                    return true;
+                    return node.parent === data.otherNode.parent;
                 },
                 dragDrop: function(node, data) {
                     data.otherNode.moveTo(node, 'before');
@@ -396,30 +442,30 @@ class LightEditor {
     }
 
     initClassesSelect() {
-        var self = this;
-        var classesSelect = document.querySelector(self.classesSelectElement);
+        let self = this;
+        let classesSelect = document.querySelector(self.classesSelectElement);
 
         function buildOptionItem(className, item, depth = 0) {
-            var option = document.createElement('option');
+            let option = document.createElement('option');
             option.innerHTML = '&nbsp;'.repeat(depth * 6) + item.label + ' (' + self.sparqlFormatter.compactUri(className, {}, false) + ')';
             option.value = className;
             classesSelect.appendChild(option);
             for (className in item.children) {
                 depth++;
-                var childItem = item.children[className];
+                let childItem = item.children[className];
                 buildOptionItem(className, childItem, depth);
                 depth--;
             }
         }
 
-        for (var className in self.classesStructure) {
+        for (let className in self.classesStructure) {
             buildOptionItem(className, self.classesStructure[className]);
         }
 
         $(self.classesSelectElement).change(function () {
             self.selectedClass = this.options[this.selectedIndex].value;
             self.loadProperties(self.selectedClass, function (data) {
-                var properties = [];
+                let properties = [];
                 data.forEach(function (item) {
                     properties[item.property.value] = {
                         label: item.label.value,
@@ -437,17 +483,22 @@ class LightEditor {
     }
 
     initBuildQueryButton() {
-        var self = this;
+        let self = this;
         document.querySelector(this.buildQueryElement).addEventListener('click', function(e) {
             $(self.queryInputElement).val(self.buildQuery());
         });
     }
 
+    /**
+     * @param uri
+     * @param prevVarName
+     * @returns {string}
+     */
     defineVariableNameByUri(uri, prevVarName = '') {
         prevVarName = prevVarName.replace(/\?/g, '');
-        var propertyUriParts = uri.split('/');
-        var objectVarBaseName = propertyUriParts[propertyUriParts.length - 1];
-        var hashParts = objectVarBaseName.split('#');
+        let propertyUriParts = uri.split('/');
+        let objectVarBaseName = propertyUriParts[propertyUriParts.length - 1];
+        let hashParts = objectVarBaseName.split('#');
         if (hashParts) {
             objectVarBaseName = hashParts[hashParts.length - 1];
         }
@@ -456,13 +507,16 @@ class LightEditor {
             prevVarName + objectVarBaseName.charAt(0).toUpperCase() + objectVarBaseName.slice(1);
     }
 
+    /**
+     * @returns {Array}
+     */
     getSelectedVariableNames() {
-        var self = this;
-        var selectedNodes = $(this.selectedPropertyTreeElement).fancytree('getTree').getRootNode().getChildren();
-        var variables = [];
+        let self = this;
+        let selectedNodes = $(this.selectedPropertyTreeElement).fancytree('getTree').getRootNode().getChildren();
+        let variables = [];
         selectedNodes.forEach(function (selectedNode) {
-            var chain = selectedNode.data.chain;
-            var variableName = '';
+            let chain = selectedNode.data.chain;
+            let variableName = '';
             chain.forEach(function (selectedNode) {
                 variableName = self.defineVariableNameByUri(selectedNode.data.property, variableName);
             });
@@ -473,12 +527,12 @@ class LightEditor {
     }
 
     buildQuery() {
-        var self = this;
-        var selectedNodes = $(this.selectedPropertyTreeElement).fancytree('getTree').getRootNode().children;
+        let self = this;
+        let selectedNodes = $(this.selectedPropertyTreeElement).fancytree('getTree').getRootNode().children;
 
-        var properties = {};
+        let properties = {};
         selectedNodes.forEach(function (selectedNode) {
-            var childProperties = [];
+            let childProperties = [];
             selectedNode.data.chain.forEach(function (chainNode) {
                 childProperties.push(chainNode.data.property);
                 if (_.has(properties, childProperties) === false) {
@@ -493,8 +547,16 @@ class LightEditor {
             });
         });
 
+        /**
+         * @param property
+         * @param childProperties
+         * @param subjectVarName
+         * @param objectVarName
+         * @param query
+         * @returns {string}
+         */
         function buildOptionalPart(property, childProperties, subjectVarName, objectVarName = '', query = '') {
-            var isInverse = false;
+            let isInverse = false;
             objectVarName = '?' + self.defineVariableNameByUri(property, objectVarName);
 
             if (_.has(childProperties, 'options.isInverse')) {
@@ -510,14 +572,14 @@ class LightEditor {
             }
             delete childProperties.options;
 
-            var optionalPlaceholder = '%optionalPlaceholder%';
+            let optionalPlaceholder = '%optionalPlaceholder%';
             property = property.indexOf('http') === 0 ? '<' + property + '>' : property;
 
-            var triple = isInverse ?
+            let triple = isInverse ?
                 objectVarName + ' ' + property + ' ' + subjectVarName :
                 subjectVarName + ' ' + property + ' ' + objectVarName;
 
-            var newQueryPart = _.isEmpty(childProperties) ?
+            let newQueryPart = _.isEmpty(childProperties) ?
                 'OPTIONAL { \n' + triple + '\n}\n' + optionalPlaceholder :
                 'OPTIONAL { \n' + triple + '\n' + optionalPlaceholder + '\n}\n';
             query = query === '' ? newQueryPart : query.replace('%optionalPlaceholder%', newQueryPart);
@@ -529,8 +591,12 @@ class LightEditor {
             return query;
         }
 
+        /**
+         * @param properties
+         * @returns {string}
+         */
         function buildQueryBody(properties) {
-            var queryBody = '?resourceUri' + ' <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ' + '<' + self.selectedClass + '>' + '\n';
+            let queryBody = '?resourceUri' + ' <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ' + '<' + self.selectedClass + '>' + '\n';
             _.forEach(properties, function(childProperties, property) {
                 queryBody = queryBody + buildOptionalPart(property, childProperties, '?resourceUri');
             });
@@ -538,25 +604,32 @@ class LightEditor {
             return queryBody;
         }
 
+        /**
+         * @returns {string}
+         */
         function buildQueryPrefixes() {
-            var prefixPart = '';
+            let prefixPart = '';
             _.forEach(self.sparqlFormatter.additionalPrefixes, function(uri, prefix) {
                 prefixPart = prefixPart + '\n' + 'PREFIX ' + prefix + ': ' + '<' + uri + '>';
             });
             return prefixPart;
         }
 
+        /**
+         * @param properties
+         * @returns {*}
+         */
         function buildQuery(properties) {
-            var queryBody = buildQueryBody(properties);
+            let queryBody = buildQueryBody(properties);
             if (self.initialQuery) {
                 // In this case we build only query body
-                var queryLines = self.initialQuery.split('\n');
-                var i = 0;
-                var bracketsCounter = 0;
-                var inWhereClause = false;
-                var withoutWherePart = [];
+                let queryLines = self.initialQuery.split('\n');
+                let i = 0;
+                let bracketsCounter = 0;
+                let inWhereClause = false;
+                let withoutWherePart = [];
                 for (i; i < queryLines.length; i++) {
-                    var currentLine = queryLines[i];
+                    let currentLine = queryLines[i];
                     if (inWhereClause === false) {
                         if (currentLine.indexOf('WHERE') !== -1) {
                             inWhereClause = true;
@@ -575,15 +648,15 @@ class LightEditor {
                 return _.trim(withoutWherePart.join('\n'), '\"').replace(new RegExp('where\\s*{\\s*}', 'gi'), 'WHERE {\n' + queryBody + '}\n');
             } else {
                 // In this case we build all query ourselves
-                var selectedVariableNames = self.getSelectedVariableNames().join(' ');
-                var prefixPart = buildQueryPrefixes();
+                let selectedVariableNames = self.getSelectedVariableNames().join(' ');
+                let prefixPart = buildQueryPrefixes();
                 return self.sparqlFormatter.compactUri(
                     prefixPart + '\n' + 'SELECT ' + selectedVariableNames + ' WHERE {\n' + queryBody + '\n}'
                 );
             }
         }
 
-        var query = self.sparqlFormatter.compactUri(self.wsparql.toWSparql(buildQuery(properties)));
+        let query = self.sparqlFormatter.compactUri(self.wsparql.toWSparql(buildQuery(properties)));
 
         console.log('Generated query:');
         console.log(query);

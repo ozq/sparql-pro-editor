@@ -1,30 +1,11 @@
+/**
+ * WSparql
+ * Class for transforming wsparq to sparql and back
+ */
 class WSparql {
     constructor() {
-        this.sf = new SparqlFormatter();
-
-        this.wrgTripleRegexpCode = this.sf.uriRegexpCode + '\\s+' + this.sf.uriRegexpCode + '_wrg' + '\\s+' + this.sf.uriRegexpCode;
-
-        /**
-         * Filter variable
-         * @param variable
-         * @returns {string}
-         */
-        this.filterVariable = function (variable) {
-            return _.trim(variable, '-');
-        };
-
-        /**
-         * Filter triple
-         * @param triple
-         * @returns {Array}
-         */
-        this.filterTriple = function (triple) {
-            var self = this;
-            triple = _.map(SparqlFormatter.getTripleParts(triple), function (variable) {
-                return self.filterVariable(variable);
-            });
-            return _.trim(triple.join(' '), '\'');
-        };
+        this.sparqlFormatter = new SparqlFormatter();
+        this.minusedVariablesRegexpCode = '-\\?\\w+';
 
         /**
          * Order of methods is important!
@@ -34,9 +15,9 @@ class WSparql {
         this.methods = {
             wearing: {
                 toSparql: function (triple, postfix) {
-                    var tripleParts = SparqlFormatter.getTripleParts(triple);
-                    var relationPart = '';
-                    var object = this.filterVariable(tripleParts[2]);
+                    let tripleParts = this.sparqlFormatter.getTripleParts(triple);
+                    let relationPart = '';
+                    let object = this.filterVariable(tripleParts[2]);
                     if (_.isUndefined(postfix)) {
                         relationPart = 'relation(' + object + ' crm2:object ' + object + 'Object' + ')\n';
                     } else {
@@ -46,53 +27,331 @@ class WSparql {
                     }
                     relationPart += 'relation(' + object + ' crm2:date_from ' + '?dateFrom' + ')\n';
                     relationPart += 'relation(' + object + ' crm2:date_to ' + '?dateTo' + ')\n';
-                    var query = 'OPTIONAL {\n' + this.filterTriple(triple) + '\n' + relationPart + '\n}';
+                    let query = 'OPTIONAL {\n' + this.filterTriple(triple) + '\n' + relationPart + '\n}';
                     return {
                         query: query,
-                        whereVariables: tripleParts[2].charAt(0) !== '-' ? [tripleParts[2]] : []
+                        whereVariables: this.isMinusedVariable(tripleParts[2]) === false ? [tripleParts[2]] : []
                     }
+                },
+                toWsparql: function (query) {
+                    let queryLines = _.compact(query.split('\n'));
+                    let optionalPartRegexp = new RegExp('\s*optional', 'i');
+                    let relationFunctionRegexpTemplate = '\\s*relation\\((' + self.sparqlFormatter.uriRegexpCode + ')\\s+' + '(.*' + '[#:]%predicate_postfix%' + ')' + '\\s' + self.sparqlFormatter.uriRegexpCode + '\\)';
+                    let relationFunctionRegexpCode = '\\s*relation\\((' + self.sparqlFormatter.uriRegexpCode + ')\\s+' + self.sparqlFormatter.uriRegexpCode + '\\s' + self.sparqlFormatter.uriRegexpCode + '\\)';
+                    let objectRelationRegexpCode = '\\s*requiredRelation\\((' + self.sparqlFormatter.uriRegexpCode + ')\\s+' + '(.*' + '[#:]object' + ')' + '\\s' + '(' + self.sparqlFormatter.uriRegexpCode + ')' + '\\)';
+                    let wrgTripleRegexp = new RegExp(self.sparqlFormatter.wrgTripleRegexpCode, 'i');
+                    let emptyLineRegexp = new RegExp('^[\\s}]+$');
+                    let inOptionalCounter = false;
+                    let inOptionalPart = false;
+                    let optionalPartFound = false;
+                    let wearingData = [];
+                    let optionalPartStartLineNumber = false;
+                    let hasSiblings = false;
+                    let lastFilledItem = false;
+                    let requiredRelationFound = false;
+
+                    for (let i = 0; i < queryLines.length; i++) {
+                        let line = _.trim(queryLines[i], '. ');
+                        if (optionalPartRegexp.test(line)) {
+                            optionalPartFound = true;
+                            hasSiblings = false;
+                            optionalPartStartLineNumber = i;
+                            lastFilledItem = false;
+                        } else {
+                            if (wrgTripleRegexp.test(line)) {
+                                let tripleParts = this.sparqlFormatter.getTripleParts(line);
+                                lastFilledItem = {
+                                    triple: _.trim(line, '. '),
+                                    subject: _.trim(tripleParts[0], '. '),
+                                    predicate: _.trim(tripleParts[1], '. '),
+                                    object: _.trim(tripleParts[2], '. '),
+                                    records: { object: '', date_from: '', date_to: '' },
+                                    lines: [i],
+                                    hasSiblings: hasSiblings,
+                                    optionalPartStartLineNumber: optionalPartStartLineNumber,
+                                    optionalPartFinishLineNumber: null,
+                                    postfixData: {}
+                                };
+                                wearingData.push(lastFilledItem);
+                            } else {
+                                let relationFunctionFound = false;
+
+                                let requiredObjectRelationMatch = line.match(new RegExp(objectRelationRegexpCode, 'i'));
+                                if (requiredObjectRelationMatch) {
+                                    let relationSubject = requiredObjectRelationMatch[1];
+                                    let relationObject = requiredObjectRelationMatch[3];
+                                    let wearingDataItem = _.find(wearingData, function (data) { return data.object === relationSubject; });
+                                    if (wearingDataItem) {
+                                        requiredRelationFound = true;
+                                        relationFunctionFound = true;
+                                        wearingDataItem.postfixData = {
+                                            triple: null,
+                                            object: relationObject,
+                                            hasSiblings: hasSiblings,
+                                            optionalPartStartLineNumber: optionalPartStartLineNumber,
+                                            optionalPartFinishLineNumber: null,
+                                        };
+                                        wearingDataItem.records.object = _.trim(line, '. ');
+                                        wearingDataItem.lines.push(i);
+                                        lastFilledItem = wearingDataItem;
+                                    }
+                                } else {
+                                    _.forEach(['object', 'date_from', 'date_to'], function (postfix) {
+                                        let regexpCode = relationFunctionRegexpTemplate.replace('%predicate_postfix%', postfix);
+                                        let relationFunctionMatch = line.match(new RegExp(regexpCode, 'i'));
+                                        if (relationFunctionMatch) {
+                                            let relationSubject = relationFunctionMatch[1];
+                                            let wearingDataItem = _.find(wearingData, function (data) { return data.object === relationSubject; });
+                                            if (wearingDataItem) {
+                                                wearingDataItem.records[postfix] = _.trim(line, '. ');
+                                                wearingDataItem.lines.push(i);
+                                                lastFilledItem = wearingDataItem;
+                                            }
+                                            relationFunctionFound = true;
+                                        }
+                                    });
+                                    if (relationFunctionFound === false) {
+                                        let relationFunctionMatch = line.match(new RegExp(relationFunctionRegexpCode, 'i'));
+                                        if (relationFunctionMatch) {
+                                            let relationSubject = relationFunctionMatch[1];
+                                            let wearingDataItem = _.find(wearingData, function (data) { return data.postfixData && data.postfixData.object === relationSubject; });
+                                            if (wearingDataItem) {
+                                                wearingDataItem.postfixData.triple = _.trim(line, '. ');
+                                                wearingDataItem.postfixData.hasSiblings = hasSiblings;
+                                                wearingDataItem.lines.push(i);
+                                                lastFilledItem = wearingDataItem;
+                                            }
+                                            relationFunctionFound = true;
+                                        }
+                                    }
+                                }
+
+                                if (relationFunctionFound === false && (emptyLineRegexp.test(line) === false && line !== '')) {
+                                    hasSiblings = true;
+                                    lastFilledItem = false;
+                                }
+                            }
+                        }
+
+                        if (optionalPartFound) {
+                            if (line.indexOf('{') > -1) {
+                                inOptionalCounter++;
+                            }
+                            if (line.indexOf('}') > -1) {
+                                inOptionalCounter--;
+                                if (lastFilledItem !== false) {
+                                    if (requiredRelationFound === true) {
+                                        lastFilledItem.postfixData.optionalPartFinishLineNumber = i;
+                                        lastFilledItem.postfixData.hasSiblings = hasSiblings;
+                                    } else {
+                                        lastFilledItem.hasSiblings = hasSiblings;
+                                        lastFilledItem.optionalPartFinishLineNumber = i;
+                                    }
+                                }
+                                requiredRelationFound = false;
+                            }
+                            if (inOptionalCounter !== false) {
+                                inOptionalPart = true;
+                            }
+                        }
+                        if (inOptionalPart === true && inOptionalCounter === 0) {
+                            hasSiblings = false;
+                            inOptionalPart = false;
+                            inOptionalCounter = false;
+                        }
+                    }
+
+                    let selectVariables = [];
+                    if (wearingData) {
+                        _.forEach(wearingData, function(wearingItem) {
+                            let isValid = true;
+                            _.forEach(wearingItem.records, function(record) {
+                                if (record === '') {
+                                    isValid = false;
+                                }
+                            });
+                            if (isValid === true) {
+                                let inputLineNumber = _.min(wearingItem.lines);
+                                selectVariables.push(wearingItem.subject);
+                                _.forEach(wearingItem.lines, function(lineNumber) {
+                                    queryLines[lineNumber] = '';
+                                });
+                                let postfix = wearingItem.postfixData && wearingItem.postfixData.triple ? wearingItem.postfixData.triple : '';
+                                let data = _.compact([wearingItem.triple, postfix]);
+                                queryLines[inputLineNumber] = 'wearing(' + data.join(', ') + ')';
+                                if (wearingItem.hasSiblings === false) {
+                                    if (wearingItem.optionalPartStartLineNumber && wearingItem.optionalPartFinishLineNumber) {
+                                        queryLines[wearingItem.optionalPartStartLineNumber] = '';
+                                        queryLines[wearingItem.optionalPartFinishLineNumber] = '';
+                                    }
+                                }
+                                if (wearingItem.postfixData && wearingItem.postfixData.optionalPartStartLineNumber && wearingItem.postfixData.optionalPartFinishLineNumber) {
+                                    queryLines[wearingItem.postfixData.optionalPartStartLineNumber] = '';
+                                    queryLines[wearingItem.postfixData.optionalPartFinishLineNumber] = '';
+                                }
+                            }
+                        });
+
+                        query = queryLines.join('\n');
+                    }
+
+                    return {
+                        query: query,
+                        whereVariables: _.uniq(selectVariables)
+                    };
                 }
             },
             requiredRelation: {
                 toSparql: function (triple, labelDepth = 1) {
                     labelDepth = _.toInteger(labelDepth);
-                    var tripleParts = SparqlFormatter.getTripleParts(triple);
-                    var labelPlaceholder = '%labelPlaceholder%';
-                    var subject = this.filterVariable(tripleParts[2]);
-                    var objectLabel = WSparql.toLabelVariable(subject);
-                    var labelQueryPart = labelPlaceholder;
-                    var currentLabelQueryPart = '';
-                    for (var i = 1; i <= labelDepth; i++) {
-                        var object = i === labelDepth ? objectLabel : subject + '_label_' + i;
-                        var currentLabelPlaceholder = i === labelDepth ? '' : labelPlaceholder;
+                    let tripleParts = this.sparqlFormatter.getTripleParts(triple);
+                    let labelPlaceholder = '%labelPlaceholder%';
+                    let subject = this.filterVariable(tripleParts[2]);
+                    let objectLabel = this.toLabelVariable(subject);
+                    let labelQueryPart = labelPlaceholder;
+                    let currentLabelQueryPart = '';
+                    for (let i = 1; i <= labelDepth; i++) {
+                        let object = i === labelDepth ? objectLabel : subject + '_label_' + i;
+                        let currentLabelPlaceholder = i === labelDepth ? '' : labelPlaceholder;
                         currentLabelQueryPart = 'OPTIONAL {\n' + subject + ' rdfs:label ' + object + '.\n' + currentLabelPlaceholder + '\n}';
                         labelQueryPart = _.replace(labelQueryPart, labelPlaceholder, currentLabelQueryPart);
                         subject = object;
                     }
-                    var query = this.filterTriple(triple) + '\n' + labelQueryPart;
+                    let query = this.filterTriple(triple) + '\n' + labelQueryPart;
 
                     return {
                         query: query,
-                        whereVariables: tripleParts[2].charAt(0) !== '-' ? [tripleParts[2], objectLabel] : []
+                        whereVariables: this.isMinusedVariable(tripleParts[2]) === false ? [tripleParts[2], objectLabel] : []
                     }
+                },
+                toWsparql: function (query) {
+                    query = query.replace(new RegExp('\\s*optional\\s*{\\s*requiredRelation\\((.*)\\)\\s*}', 'gmi'), function (match, triple) {
+                        return '\nrelation(' + triple + ')';
+                    });
+                    return {
+                        query: query,
+                        whereVariables: _.uniq([])
+                    };
                 }
             },
             relation: {
                 toSparql: function (triple, labelDepth = 1) {
-                    var requiredRelationResult = this.methods.requiredRelation.toSparql.call(this, triple, labelDepth);
-                    var query = 'OPTIONAL {\n' + requiredRelationResult.query + '\n}';
+                    let requiredRelationResult = this.methods.requiredRelation.toSparql.call(this, triple, labelDepth);
+                    let query = 'OPTIONAL {\n' + requiredRelationResult.query + '\n}';
                     return {
                         query: query,
                         whereVariables: requiredRelationResult.whereVariables
+                    }
+                },
+                toWsparql: function (query) {
+                    let self = this;
+                    let lines = _.compact(query.split('\n'));
+                    let lineCount = lines.length;
+                    let optionalPartRegexp = new RegExp('\s*optional', 'i');
+                    let tripleData = [];
+                    let inRootOptionalPart = false;
+                    let inRootOptionalPartCounter = 0;
+                    let whereClauseRegexp = new RegExp('where\\s*\\{', 'i');
+                    let whereClauseFound = false;
+
+                    for (let i = 0; i < lineCount; i++) {
+                        let line = _.trim(lines[i], '. ');
+                        if (whereClauseRegexp.test(line)) {
+                            whereClauseFound = true;
+                        } else {
+                            if (whereClauseFound === true) {
+                                if (self.sparqlFormatter.isTripleLine(line)) {
+                                    let tripleParts = self.sparqlFormatter.getTripleParts(line);
+                                    if (self.sparqlFormatter.isLabelUri(tripleParts[1])) {
+                                        let labelObject = {
+                                            triple: line,
+                                            line: i,
+                                            optionalDepth: inRootOptionalPartCounter,
+                                            object: tripleParts[2],
+                                            subject: tripleParts[0],
+                                        };
+                                        let tripleDataItem = _.find(tripleData, function (data) { return data.object === tripleParts[0]; });
+                                        if (tripleDataItem) {
+                                            let tripleBySubject = _.find(tripleData, function (data) { return data.subject === tripleParts[0]; });
+                                            // prevent problem with reversed triples
+                                            if (!tripleBySubject) {
+                                                tripleDataItem.labels.push(labelObject);
+                                            }
+                                        } else {
+                                            let tripleDataItem = _.find(tripleData, function (data) { return _.isEmpty(data.labels) === false && _.last(data.labels).object === tripleParts[0]; });
+                                            if (tripleDataItem) {
+                                                tripleDataItem.labels.push(labelObject);
+                                            }
+                                        }
+                                    } else {
+                                        tripleData.push({
+                                            object: tripleParts[2],
+                                            subject: tripleParts[0],
+                                            optionalDepth: inRootOptionalPartCounter,
+                                            triple: line,
+                                            line: i,
+                                            labels: []
+                                        });
+                                    }
+                                } else {
+                                    if (optionalPartRegexp.test(line)) {
+                                        inRootOptionalPart = true;
+                                    }
+                                }
+
+                                if (line.indexOf('{') > -1) {
+                                    if (inRootOptionalPart) {
+                                        inRootOptionalPartCounter++;
+                                    }
+                                }
+                                if (line.indexOf('}') > -1) {
+                                    if (inRootOptionalPart) {
+                                        inRootOptionalPartCounter--;
+                                        if (inRootOptionalPartCounter === 0) {
+                                            inRootOptionalPart = false;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    let selectVariables = [];
+                    _.forEach(_.uniq(tripleData), function(tripleItem) {
+                        if (_.isEmpty(tripleItem.labels) === false) {
+                            let labelDepth = _.size(tripleItem.labels);
+                            lines[tripleItem.line] = '';
+                            _.forEach(_.uniq(tripleItem.labels), function(labelItem) {
+                                lines[labelItem.line] = '';
+                            });
+                            let functionArgs = [];
+                            functionArgs.push(tripleItem.triple);
+                            if (labelDepth > 1) {
+                                functionArgs.push(labelDepth);
+                            }
+                            lines[tripleItem.line] = 'requiredRelation(' + functionArgs.join(', ') + ')';
+                            selectVariables.push(tripleItem.object);
+                        }
+                    });
+
+                    query = self.simplifyRelations(
+                        self.methods.requiredRelation.toWsparql(
+                            self.sparqlFormatter.replaceEmptyOperators(lines.join('\n'))
+                        ).query
+                    );
+
+                    return {
+                        query: query,
+                        whereVariables: _.uniq(selectVariables)
                     }
                 }
             },
             optional: {
                 toSparql: function (triple) {
-                    var query = 'OPTIONAL {\n' + triple + '\n}';
+                    let query = 'OPTIONAL {\n' + triple + '\n}';
                     return {
                         query: query,
-                        whereVariables: [SparqlFormatter.getTripleParts(triple)[2]]
+                        whereVariables: [this.sparqlFormatter.getTripleParts(triple)[2]]
                     }
                 }
             }
@@ -100,40 +359,135 @@ class WSparql {
     }
 
     /**
-     * Change variable name to "label-like" name
-     * E.g.: ?some_variable => ?_some_variable
+     * @param query
+     * @returns {string|*}
+     */
+    simplifyRelations(query) {
+        let queryLines = query.split('\n');
+        let objectData = [];
+        let optionalDepth = 0;
+        let inOptionalPart = false;
+        let optionalRegexp = new RegExp('optional\\s*{', 'i');
+        let somePartRegexp = new RegExp('\\w+\\s*{', 'i');
+        let requiredRelationRegexp = new RegExp('requiredRelation\\((.+)\\)', 'i');
+        for (let i = 0; i < queryLines.length; i++) {
+            let queryLine = queryLines[i];
+            if (optionalRegexp.test(queryLine)) {
+                inOptionalPart = true;
+            } else {
+                if (somePartRegexp.test(queryLine) === true) {
+                    inOptionalPart = false;
+                }
+            }
+            if (inOptionalPart) {
+                queryLine.indexOf('{') > -1 ? optionalDepth++ : false;
+                queryLine.indexOf('}') > -1 ? optionalDepth-- : false;
+                if (optionalDepth === 0) {
+                    inOptionalPart = false;
+                }
+            }
+            if (self.sparqlFormatter.isTripleLine(queryLine)) {
+                objectData[self.sparqlFormatter.getTripleParts(queryLine)[2]] = {
+                    optionalDepth: optionalDepth,
+                    lineNumber: i
+                };
+            }
+            if (requiredRelationRegexp.test(queryLine)) {
+                let relationContent = queryLine.match(requiredRelationRegexp)[1];
+                let relationTriple = relationContent.split(', ')[0];
+                let relationSubjectData = objectData[self.sparqlFormatter.getTripleParts(relationTriple)[0]];
+                if (optionalDepth !== relationSubjectData.optionalDepth) {
+                    queryLines[i] = '';
+                    let newRelation = 'relation(' + relationContent + ')';
+                    queryLines.splice(relationSubjectData.lineNumber + 1, 0, newRelation);
+                }
+            }
+        }
+
+        query = queryLines.join('\n');
+
+        let complexRelationRegexp = new RegExp('optional\\s*{\\s*(relation\\(.+\\))\\s+\\}', 'gi');
+        while (complexRelationRegexp.test(query)) {
+            query = query.replace(complexRelationRegexp, function (match, relationFunction) {
+                return relationFunction;
+            });
+        }
+
+        return query;
+    }
+
+    /**
      * @param variable
      * @returns {string}
      */
-    static toLabelVariable(variable) {
+    filterVariable(variable) {
+        return _.trim(variable, '-');
+    };
+
+    /**
+     * @param variable
+     * @returns {boolean}
+     */
+    isMinusedVariable(variable) {
+        return variable.charAt(0) === '-';
+    };
+
+    /**
+     * @param triple
+     * @returns {string}
+     */
+    filterTriple(triple) {
+        let self = this;
+        triple = _.map(self.sparqlFormatter.getTripleParts(triple), function (variable) {
+            return self.filterVariable(variable);
+        });
+        return _.trim(triple.join(' '), '\'');
+    };
+
+    /**
+     * @param query
+     */
+    getMinusedVariables(query) {
+        return query.match(new RegExp(this.minusedVariablesRegexpCode, 'g'));
+    }
+
+    /**
+     * Change variable name to label name format
+     * E.g.: ?some_variable => ?_some_variable
+     *
+     * @param variable
+     * @returns {string}
+     */
+    toLabelVariable(variable) {
         return _.replace(variable, '?', '?_');
     }
 
     /**
      * Translate WSparql to Sparql query
+     *
      * @param query
      * @param addSingletonProperties
      * @returns {*}
      */
     toSparql(query, addSingletonProperties = false) {
-        var self = this;
-        var whereVariablesRegexp = new RegExp(name + '(SELECT)\\s+(.*)\\s+(WHERE)', 'gi');
+        let self = this;
+        let whereVariablesRegexp = new RegExp(name + '(SELECT)\\s+(.*)\\s+(WHERE)', 'gi');
         _.forEach(self.methods, function(method, name) {
-            var methodWhereVariablesGroup = [];
-            var regexp = new RegExp(name + '\\((.*)\\)\\.*', 'gi');
+            let methodWhereVariablesGroup = [];
+            let regexp = new RegExp(name + '\\((.*)\\)\\.*', 'gi');
             if (regexp.test(query)) {
                 query = query.replace(regexp, function (match, methodArguments) {
-                    var result = self.methods[name].toSparql.apply(self, methodArguments.split(','));
+                    let result = self.methods[name].toSparql.apply(self, methodArguments.split(','));
                     methodWhereVariablesGroup.push(result.whereVariables);
                     return addSingletonProperties === true ?
-                        self.sf.addSingletonProperties(result.query, false, '_ws') :
+                        self.sparqlFormatter.addSingletonProperties(result.query, false, '_ws') :
                         result.query;
                 });
             }
             _.forEach(methodWhereVariablesGroup, function(methodWhereVariables) {
                 query = query.replace(whereVariablesRegexp, function (match, c1, queryVariables, c2) {
                     queryVariables = queryVariables.split(/\s+/);
-                    var wherePart = _.uniq(queryVariables.concat(methodWhereVariables)).join(' ');
+                    let wherePart = _.uniq(queryVariables.concat(methodWhereVariables)).join(' ');
                     return  c1 + ' ' + wherePart + ' ' + c2;
                 });
             });
@@ -147,361 +501,31 @@ class WSparql {
 
     /**
      * Translate Sparql to WSparql query
+     *
      * @param query
      * @returns {*}
      */
     toWSparql(query) {
-        var self = this;
+        let self = this;
 
-        //TODO: вынести эти функции в this.methods.{method}.toWSparql методы
-        function toRelationFunctions(query) {
-            function requiredToRelationFunctions(query) {
-                return query.replace(new RegExp('\\s*optional\\s*{\\s*requiredRelation\\((.*)\\)\\s*}', 'gmi'), function (match, triple) {
-                    return '\nrelation(' + triple + ')';
-                });
+        _.forEach(self.methods, function(method, name) {
+            if (self.methods[name].toWsparql) {
+                let methodResult = self.methods[name].toWsparql.apply(self, [query]);
+                query = methodResult.query;
             }
-            function simplifyRelations(query) {
-                var lines = query.split('\n');
-                var optionalRegexp = new RegExp('optional\\s*{', 'i');
-                var somePartRegexp = new RegExp('\\w+\\s*{', 'i');
-                var optionalDepth = 0;
-                var inOptionalPart = false;
-                var objectData = [];
-                var requiredRelationRegexp = new RegExp('requiredRelation\\((.+)\\)', 'i');
-                for (var i = 0; i < lines.length; i++) {
-                    var currentLine = lines[i];
+        });
 
-                    if (optionalRegexp.test(currentLine)) {
-                        inOptionalPart = true;
-                    } else {
-                        if (somePartRegexp.test(currentLine) === true) {
-                            inOptionalPart = false;
-                        }
-                    }
-
-                    if (inOptionalPart) {
-                        currentLine.indexOf('{') > -1 ? optionalDepth++ : false;
-                        currentLine.indexOf('}') > -1 ? optionalDepth-- : false;
-                        if (optionalDepth === 0) {
-                            inOptionalPart = false;
-                        }
-                    }
-
-                    if (self.sf.isTripleLine(currentLine, true)) {
-                        objectData[SparqlFormatter.getTripleParts(currentLine)[2]] = {
-                            optionalDepth: optionalDepth,
-                            lineNumber: i
-                        };
-                    }
-
-                    if (requiredRelationRegexp.test(currentLine)) {
-                        var relationContent = currentLine.match(requiredRelationRegexp)[1];
-                        var relationTriple = relationContent.split(', ')[0];
-                        var relationSubjectData = objectData[SparqlFormatter.getTripleParts(relationTriple)[0]];
-                        if (optionalDepth !== relationSubjectData.optionalDepth) {
-                            lines[i] = '';
-                            var newRelation = 'relation(' + relationContent + ')';
-                            lines.splice(relationSubjectData.lineNumber + 1, 0, newRelation);
-                        }
-                    }
-                }
-
-                query = lines.join('\n');
-
-                var complexRelationRegexp = new RegExp('optional\\s*{\\s*(relation\\(.+\\))\\s+\\}', 'gi');
-                while (complexRelationRegexp.test(query)) {
-                    query = query.replace(complexRelationRegexp, function (match, relationFunction) {
-                        return relationFunction;
-                    });
-                }
-
-                return query;
-            }
-
-            var lines = _.compact(query.split('\n'));
-            var lineCount = lines.length;
-            var optionalPartRegexp = new RegExp('\s*optional', 'i');
-            var tripleData = [];
-            var inRootOptionalPart = false;
-            var inRootOptionalPartCounter = 0;
-            var whereClauseRegexp = new RegExp('where\\s*\\{', 'i');
-            var whereClauseFound = false;
-
-            for (var i = 0; i < lineCount; i++) {
-                var line = _.trim(lines[i], '. ');
-                if (whereClauseRegexp.test(line)) {
-                    whereClauseFound = true;
-                } else {
-                    if (whereClauseFound === true) {
-                        if (self.sf.isTripleLine(line)) {
-                            var tripleParts = SparqlFormatter.getTripleParts(line);
-                            if (self.sf.isLabelUri(tripleParts[1])) {
-                                var labelObject = {
-                                    triple: line,
-                                    line: i,
-                                    optionalDepth: inRootOptionalPartCounter,
-                                    object: tripleParts[2],
-                                    subject: tripleParts[0],
-                                };
-                                var tripleDataItem = _.find(tripleData, function (data) { return data.object === tripleParts[0]; });
-                                if (tripleDataItem) {
-                                    var tripleBySubject = _.find(tripleData, function (data) { return data.subject === tripleParts[0]; });
-                                    // prevent problem with reversed triples
-                                    if (!tripleBySubject) {
-                                        tripleDataItem.labels.push(labelObject);
-                                    }
-                                } else {
-                                    var tripleDataItem = _.find(tripleData, function (data) { return _.isEmpty(data.labels) === false && _.last(data.labels).object === tripleParts[0]; });
-                                    if (tripleDataItem) {
-                                        tripleDataItem.labels.push(labelObject);
-                                    }
-                                }
-                            } else {
-                                tripleData.push({
-                                    object: tripleParts[2],
-                                    subject: tripleParts[0],
-                                    optionalDepth: inRootOptionalPartCounter,
-                                    triple: line,
-                                    line: i,
-                                    labels: []
-                                });
-                            }
-                        } else {
-                            if (optionalPartRegexp.test(line)) {
-                                inRootOptionalPart = true;
-                            }
-                        }
-
-                        if (line.indexOf('{') > -1) {
-                            if (inRootOptionalPart) {
-                                inRootOptionalPartCounter++;
-                            }
-                        }
-                        if (line.indexOf('}') > -1) {
-                            if (inRootOptionalPart) {
-                                inRootOptionalPartCounter--;
-                                if (inRootOptionalPartCounter === 0) {
-                                    inRootOptionalPart = false;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            var selectVariables = [];
-            _.forEach(_.uniq(tripleData), function(tripleItem) {
-                if (_.isEmpty(tripleItem.labels) === false) {
-                    var labelDepth = _.size(tripleItem.labels);
-                    lines[tripleItem.line] = '';
-                    //TODO: валидировать labelDepth, она должна быть по нарастающей
-                    _.forEach(_.uniq(tripleItem.labels), function(labelItem) {
-                        lines[labelItem.line] = '';
-                    });
-                    var functionArgs = [];
-                    functionArgs.push(tripleItem.triple);
-                    if (labelDepth > 1) {
-                        functionArgs.push(labelDepth);
-                    }
-                    lines[tripleItem.line] = 'requiredRelation(' + functionArgs.join(', ') + ')';
-                    selectVariables.push(tripleItem.object);
-                }
-            });
-
-            query = simplifyRelations(requiredToRelationFunctions(self.sf.replaceEmptyOperators(lines.join('\n'))));
-
-            return {
-                query: query,
-                selectVariables: _.uniq(selectVariables)
-            }
-        }
-        function toWearingFunctions(query) {
-            var lines = _.compact(query.split('\n'));
-            var lineCount = lines.length;
-            var optionalPartRegexp = new RegExp('\s*optional', 'i');
-            var relationFunctionRegexpTemplate = '\\s*relation\\((' + self.sf.uriRegexpCode + ')\\s+' + '(.*' + '[#:]%predicate_postfix%' + ')' + '\\s' + self.sf.uriRegexpCode + '\\)';
-            var relationFunctionRegexpCode = '\\s*relation\\((' + self.sf.uriRegexpCode + ')\\s+' + self.sf.uriRegexpCode + '\\s' + self.sf.uriRegexpCode + '\\)';
-            var objectRelationRegexpCode = '\\s*requiredRelation\\((' + self.sf.uriRegexpCode + ')\\s+' + '(.*' + '[#:]object' + ')' + '\\s' + '(' + self.sf.uriRegexpCode + ')' + '\\)';
-            var wrgTripleRegexp = new RegExp(self.wrgTripleRegexpCode, 'i');
-            var emptyLineRegexp = new RegExp('^[\\s}]+$');
-            var inOptionalCounter = false;
-            var inOptionalPart = false;
-            var optionalPartFound = false;
-            var wearingData = [];
-            var optionalPartStartLineNumber = false;
-            var hasSiblings = false;
-            var lastFilledItem = false;
-            var requiredRelationFound = false;
-
-            for (var i = 0; i < lineCount; i++) {
-                var line = _.trim(lines[i], '. ');
-                if (optionalPartRegexp.test(line)) {
-                    optionalPartFound = true;
-                    hasSiblings = false;
-                    optionalPartStartLineNumber = i;
-                    lastFilledItem = false;
-                } else {
-                    if (wrgTripleRegexp.test(line)) {
-                        var tripleParts = SparqlFormatter.getTripleParts(line);
-                        lastFilledItem = {
-                            triple: _.trim(line, '. '),
-                            subject: _.trim(tripleParts[0], '. '),
-                            predicate: _.trim(tripleParts[1], '. '),
-                            object: _.trim(tripleParts[2], '. '),
-                            records: { object: '', date_from: '', date_to: '' },
-                            lines: [i],
-                            hasSiblings: hasSiblings,
-                            optionalPartStartLineNumber: optionalPartStartLineNumber,
-                            optionalPartFinishLineNumber: null,
-                            postfixData: {}
-                        };
-                        wearingData.push(lastFilledItem);
-                    } else {
-                        var relationFunctionFound = false;
-
-                        var requiredObjectRelationMatch = line.match(new RegExp(objectRelationRegexpCode, 'i'));
-                        if (requiredObjectRelationMatch) {
-                            var relationSubject = requiredObjectRelationMatch[1];
-                            var relationObject = requiredObjectRelationMatch[3];
-                            var wearingDataItem = _.find(wearingData, function (data) { return data.object === relationSubject; });
-                            if (wearingDataItem) {
-                                requiredRelationFound = true;
-                                relationFunctionFound = true;
-                                wearingDataItem.postfixData = {
-                                    triple: null,
-                                    object: relationObject,
-                                    hasSiblings: hasSiblings,
-                                    optionalPartStartLineNumber: optionalPartStartLineNumber,
-                                    optionalPartFinishLineNumber: null,
-                                };
-                                wearingDataItem.records.object = _.trim(line, '. ');
-                                wearingDataItem.lines.push(i);
-                                lastFilledItem = wearingDataItem;
-                            }
-                        } else {
-                            _.forEach(['object', 'date_from', 'date_to'], function (postfix) {
-                                var regexpCode = relationFunctionRegexpTemplate.replace('%predicate_postfix%', postfix);
-                                var relationFunctionMatch = line.match(new RegExp(regexpCode, 'i'));
-                                if (relationFunctionMatch) {
-                                    var relationSubject = relationFunctionMatch[1];
-                                    var wearingDataItem = _.find(wearingData, function (data) { return data.object === relationSubject; });
-                                    if (wearingDataItem) {
-                                        wearingDataItem.records[postfix] = _.trim(line, '. ');
-                                        wearingDataItem.lines.push(i);
-                                        lastFilledItem = wearingDataItem;
-                                    }
-                                    relationFunctionFound = true;
-                                }
-                            });
-                            if (relationFunctionFound === false) {
-                                var relationFunctionMatch = line.match(new RegExp(relationFunctionRegexpCode, 'i'));
-                                if (relationFunctionMatch) {
-                                    var relationSubject = relationFunctionMatch[1];
-                                    var wearingDataItem = _.find(wearingData, function (data) { return data.postfixData && data.postfixData.object === relationSubject; });
-                                    if (wearingDataItem) {
-                                        wearingDataItem.postfixData.triple = _.trim(line, '. ');
-                                        wearingDataItem.postfixData.hasSiblings = hasSiblings;
-                                        wearingDataItem.lines.push(i);
-                                        lastFilledItem = wearingDataItem;
-                                    }
-                                    relationFunctionFound = true;
-                                }
-                            }
-                        }
-
-                        //TODO: сделать проверку на пустую строку по нормальному.
-                        if (relationFunctionFound === false && (emptyLineRegexp.test(line) === false && line !== '')) {
-                            hasSiblings = true;
-                            lastFilledItem = false;
-                        }
-                    }
-                }
-
-                if (optionalPartFound) {
-                    if (line.indexOf('{') > -1) {
-                        inOptionalCounter++;
-                    }
-                    if (line.indexOf('}') > -1) {
-                        inOptionalCounter--;
-                        if (lastFilledItem !== false) {
-                            if (requiredRelationFound === true) {
-                                lastFilledItem.postfixData.optionalPartFinishLineNumber = i;
-                                lastFilledItem.postfixData.hasSiblings = hasSiblings;
-                            } else {
-                                lastFilledItem.hasSiblings = hasSiblings;
-                                lastFilledItem.optionalPartFinishLineNumber = i;
-                            }
-                        }
-                        requiredRelationFound = false;
-                    }
-                    if (inOptionalCounter !== false) {
-                        inOptionalPart = true;
-                    }
-                }
-                if (inOptionalPart === true && inOptionalCounter === 0) {
-                    hasSiblings = false;
-                    inOptionalPart = false;
-                    inOptionalCounter = false;
-                }
-            }
-
-            var selectVariables = [];
-            if (wearingData) {
-                _.forEach(wearingData, function(wearingItem) {
-                    var isValid = true;
-                    _.forEach(wearingItem.records, function(record) {
-                        if (record == '') {
-                            isValid = false;
-                        }
-                    });
-                    if (isValid === true) {
-                        var inputLineNumber = _.min(wearingItem.lines);
-                        selectVariables.push(wearingItem.subject);
-                        _.forEach(wearingItem.lines, function(lineNumber) {
-                            lines[lineNumber] = '';
-                        });
-                        var postfix = wearingItem.postfixData && wearingItem.postfixData.triple ? wearingItem.postfixData.triple : '';
-                        var data = _.compact([wearingItem.triple, postfix]);
-                        lines[inputLineNumber] = 'wearing(' + data.join(', ') + ');';
-                        if (wearingItem.hasSiblings === false) {
-                            if (wearingItem.optionalPartStartLineNumber && wearingItem.optionalPartFinishLineNumber) {
-                                lines[wearingItem.optionalPartStartLineNumber] = '';
-                                lines[wearingItem.optionalPartFinishLineNumber] = '';
-                            }
-                        }
-                        //TODO: если у нас wearingItem.hasSiblings === false, то зачищаем все строки,
-                        //TODO: с wearingItem.optionalPartStartLineNumber по wearingItem.optionalPartFinishLineNumber;
-                        //TODO: wearingItem.postfixData.hasSiblings скорее всего не нужен при этом.
-                        if (wearingItem.postfixData && wearingItem.postfixData.optionalPartStartLineNumber && wearingItem.postfixData.optionalPartFinishLineNumber) {
-                            lines[wearingItem.postfixData.optionalPartStartLineNumber] = '';
-                            lines[wearingItem.postfixData.optionalPartFinishLineNumber] = '';
-                        }
-                    }
-                });
-
-                query = lines.join('\n');
-            }
-
-            return {
-                query: query,
-                selectVariables: _.uniq(selectVariables)
-            };
-        }
-
-        query = toRelationFunctions(query).query;
-        query = toWearingFunctions(query).query;
-
-        var selectVariablesMatch = this.sf.getSelectVariables(query);
+        let selectVariablesMatch = this.sparqlFormatter.getSelectVariables(query);
         if (selectVariablesMatch) {
-            var queryWithoutSelectPart = query.replace(selectVariablesMatch[0], '');
-            var bodyVariables = queryWithoutSelectPart.match(new RegExp('[\\w]*[?<$:][\\w:\\/\\.\\-#>]+', 'gmi'));
-            var definedVariables = _.intersection(selectVariablesMatch.items, bodyVariables);
+            let queryWithoutSelectPart = query.replace(selectVariablesMatch[0], '');
+            let bodyVariables = queryWithoutSelectPart.match(new RegExp('[\\w]*[?<$:][\\w:\\/\\.\\-#>]+', 'gmi'));
+            let definedVariables = _.intersection(selectVariablesMatch.items, bodyVariables);
             query = query.replace(selectVariablesMatch[1], ' ' + _.trim(definedVariables.join(' '), ' ') + ' ');
         }
 
         query = query.replace(new RegExp('^\\s*PREFIX.*$', 'gmi'), '');
 
-        query = self.sf.beautify(query);
+        query = self.sparqlFormatter.beautify(query);
 
         console.log('Sparql -> WSparql');
         console.log(query);

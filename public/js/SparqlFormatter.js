@@ -1,12 +1,17 @@
+/**
+ * SparqlFormatter
+ *
+ * Class contains helper-methods for sparql query modifying
+ */
 class SparqlFormatter {
+    /**
+     * @param options
+     */
     constructor(options) {
-        //TODO: check regexp, they may be not "clear" (match excess whitespaces and dots)
         this.triplePairsRegexpCode = '(?:(([?<$\\w][\\w:\\/\\.\\-#>]+)[\\s\\.]+){3}){2}';
         this.uriRegexpCode = '[\\w]*[?<$:][\\w:\\/\\.\\-#>]+';
         this.tripleLineRegexpCode = '(?:(?:' + this.uriRegexpCode + ')[\\s\\.]*){3}';
         this.tripleElementsRegexpCode = '[?<$\\w:][\\w:\\/\\.\\-#>]*[?!\\w>]';
-        this.allUriRegexpCode = '[\\w<]+\\:[\\w#\\/\\.-\ v\>-]+';
-        this.minusedVariablesRegexpCode = '-\\?\\w+';
         this.singletonPropertyUri = '\<http://www.w3.org/1999/02/22-rdf-syntax-ns#singletonPropertyOf>';
         this.allPrefixesRegexpCode = '[\\w]+(?=:(?!\\/\\/))';
         this.excessLineRegexpCode = '(\\n\\s*){2}[^\\S\\t]';
@@ -14,11 +19,17 @@ class SparqlFormatter {
         this.variablesRegexpCode = '[?$]\\w+';
         this.rdfTypeUri = '(<http:\\/\\/www\\.w3\\.org\\/1999\\/02\\/22-rdf-syntax-ns#type>|rdf:type)';
         this.labelUri = '^(<http:\\/\\/www\\.w3\\.org\\/2000\\/01\\/rdf-schema#label>|rdfs:label)$';
+        this.wrgTripleRegexpCode = this.uriRegexpCode + '\\s+' + this.uriRegexpCode + '_wrg' + '\\s+' + this.uriRegexpCode;
         this.tripleElementRegexpCode = '^\\s*([?<$\\w][\\w:\\/\\.\\-#>]+)\\s*$';
+        this.allUriRegexpCode = '[\\w<]+\\:[\\w#\\/\\.-\ v\>-]+';
         this.indentLength = options && options.indentLength ? options.indentLength : 4;
         this.additionalPrefixes = options && options.additionalPrefixes ? options.additionalPrefixes : {};
     }
 
+    /**
+     * @param content
+     * @returns {*}
+     */
     beautify(content) {
         return this.correctBrackets(
             this.removeExcessLinesInOperators(
@@ -29,66 +40,78 @@ class SparqlFormatter {
         );
     }
 
-    correctBrackets(content) {
-        var contentLines = content.split('\n');
+    /**
+     * @param query
+     * @returns {string}
+     */
+    correctBrackets(query) {
+        let queryLines = query.split('\n');
+        let indentDepth = 0;
+        let formattedQueryLines = [];
 
-        var indentDepth = 0;
-        var formattedContent = [];
-        var lineCount = contentLines.length;
-
-        for (var i = 0; i < lineCount; i++) {
-            var currentString = contentLines[i];
-            if (currentString.indexOf('{') > -1) {
-                currentString = this.getStringWithIndents(indentDepth, currentString);
+        for (let i = 0; i < queryLines.length; i++) {
+            let queryLine = queryLines[i];
+            if (queryLine.indexOf('{') > -1) {
+                queryLine = this.buildStringWithIndents(queryLine, indentDepth);
                 indentDepth++;
             } else {
-                if (currentString.indexOf('}') > -1) {
+                if (queryLine.indexOf('}') > -1) {
                     indentDepth--;
                 }
-                currentString = this.getStringWithIndents(indentDepth, currentString);
+                queryLine = this.buildStringWithIndents(queryLine, indentDepth);
             }
-            formattedContent.push(currentString);
+            formattedQueryLines.push(queryLine);
         }
 
-        return formattedContent.join('\n');
+        return formattedQueryLines.join('\n');
     }
 
-
-    removeIndents(content) {
-        return content.replace(new RegExp(this.allIndentsRegexpCode, 'gm'), '');
+    /**
+     * @param query
+     */
+    removeIndents(query) {
+        return query.replace(new RegExp(this.allIndentsRegexpCode, 'gm'), '');
     }
 
-    getStringWithIndents(indentDepth, string) {
+    /**
+     * @param indentDepth
+     * @param string
+     * @returns {string}
+     */
+    buildStringWithIndents(string, indentDepth) {
         return new Array(indentDepth * this.indentLength).join(' ') + string;
     }
 
-    removeExcessLines(content) {
-        content = content.replace(new RegExp(this.excessLineRegexpCode, 'gi'), '\n');
-        var contentWithoutExcessLines =_.compact(content.split('\n'));
-        return contentWithoutExcessLines.join('\n');
+    /**
+     * @param query
+     * @returns {string}
+     */
+    removeExcessLines(query) {
+        return _.compact(query.replace(new RegExp(this.excessLineRegexpCode, 'gi'), '\n').split('\n')).join('\n');
     }
 
-    removeExcessLinesInOperators(content) {
-        var contentLines = content.split('\n');
-        var indentDepth = 0;
-        var formattedContent = [];
-        var lineCount = contentLines.length;
-        var emptyLineRegexp = new RegExp('^\\s+$', 'gm');
-        var operatorContainRegexp = new RegExp('\\s*\\w+\\s*{', 'gm');
+    /**
+     * @param query
+     * @returns {Array}
+     */
+    removeExcessLinesInOperators(query) {
+        let queryLines = query.split('\n');
+        let indentDepth = 0;
+        let formattedContent = [];
+        let emptyLineRegexp = new RegExp('^\\s+$', 'gm');
+        let operatorContainsRegexp = new RegExp('\\s*\\w+\\s*{', 'gm');
 
-        for (var i = 0; i < lineCount; i++) {
-            var currentString = contentLines[i];
+        for (let i = 0; i < queryLines.length; i++) {
+            let queryLine = queryLines[i];
 
-            currentString.indexOf('{') > -1 ? indentDepth++ : false;
-            currentString.indexOf('}') > -1 ? indentDepth-- : false;
+            queryLine.indexOf('{') > -1 ? indentDepth++ : false;
+            queryLine.indexOf('}') > -1 ? indentDepth-- : false;
 
             if (indentDepth >= 0) {
-                var isCurrentLineEmpty = currentString.replace(/^\s+|\s+$/g, '') === '' || emptyLineRegexp.test(currentString);
-                var nextLine = contentLines[i + 1];
-                var isNextLineWithoutOperator = !operatorContainRegexp.test(nextLine);
-
-                if (!(isCurrentLineEmpty && isNextLineWithoutOperator)) {
-                    formattedContent += currentString + '\n';
+                let isCurrentLineEmpty = queryLine.replace(/^\s+|\s+$/g, '') === '' || emptyLineRegexp.test(queryLine);
+                let nextQueryLine = queryLines[i + 1];
+                if (!(isCurrentLineEmpty && operatorContainsRegexp.test(nextQueryLine) === false)) {
+                    formattedContent += queryLine + '\n';
                 }
             }
         }
@@ -96,121 +119,133 @@ class SparqlFormatter {
         return formattedContent;
     }
 
-    removeAllOperatorsByName(content, name) {
-        var operatorStartIndex = 0;
-        var processContent = content;
-        var operatorRegexp = new RegExp(name + '\\s*{', 'gi');
+    /**
+     * @param query
+     * @param operator
+     * @returns {*}
+     */
+    removeAllOperatorsByName(query, operator) {
+        let operatorStartIndex = 0;
 
         do {
             // Find operator start index
-            operatorStartIndex = processContent.search(operatorRegexp);
+            operatorStartIndex = query.search(this.getOperatorRegexp(operator));
             if (operatorStartIndex >= 0) {
-                var matchedBracket;
-                var bracketsCounter = 0;
-                var bracketsRegexp = new RegExp('[{}]', 'g');
+                let matchedBracket;
+                let bracketsCounter = 0;
+                let bracketsRegexp = new RegExp('[{}]', 'g');
                 bracketsRegexp.lastIndex = operatorStartIndex;
 
                 // Find operator last bracket index
-                while (matchedBracket = bracketsRegexp.exec(processContent)) {
+                while (matchedBracket = bracketsRegexp.exec(query)) {
                     bracketsRegexp.lastIndex = matchedBracket.index + 1;
                     matchedBracket[0] === '{' ? bracketsCounter++ : false;
                     matchedBracket[0] === '}' ? bracketsCounter-- : false;
                     if (bracketsCounter === 0) {
                         // Replace all content from operator start index to operator last bracket index
-                        var operatorContent = processContent.substring(operatorStartIndex, bracketsRegexp.lastIndex);
-                        processContent = processContent.replace(operatorContent, '');
+                        let operatorContent = query.substring(operatorStartIndex, bracketsRegexp.lastIndex);
+                        query = query.replace(operatorContent, '');
                         break;
                     }
                 }
 
                 // Handle brackets nesting error
                 if (bracketsCounter > 0) {
-                    $.notify(
-                        '<strong>SPARQL syntax error, check brackets nesting.</strong><br>',
-                        {
-                            type: 'warning',
-                            placement: {
-                                from: 'bottom',
-                                align: 'right'
-                            }
-                        }
-                    );
+                    console.warn('SPARQL syntax error, check brackets nesting!');
                     break;
                 }
             }
         } while (operatorStartIndex >= 0);
 
-        return this.beautify(processContent);
+        return this.beautify(query);
     }
 
-    expandUri(content, prefixes = {}) {
+    /**
+     * @param query
+     * @param prefixes
+     * @returns {*}
+     */
+    expandUri(query, prefixes = {}) {
         prefixes = _.merge(this.additionalPrefixes, prefixes);
         Object.keys(prefixes).map(function(prefix) {
-            var url = prefixes[prefix];
-            var replacedContent = content.replace(new RegExp(prefix + ':(\\w+)', 'gi'), function(match, property) {
-                return '<' + url + property + '>';
+            let uri = prefixes[prefix];
+            let expandedQuery = query.replace(new RegExp(prefix + ':(\\w+)', 'gi'), function(match, property) {
+                return '<' + uri + property + '>';
             });
-            replacedContent ? content = replacedContent : false;
+            expandedQuery ? query = expandedQuery : false;
         });
 
-        return content;
+        return query;
     }
 
-    compactUri(content, prefixes = {}, isStrict = true) {
+    /**
+     * @param query
+     * @param prefixes
+     * @param isStrict
+     * @returns {*}
+     */
+    compactUri(query, prefixes = {}, isStrict = true) {
         prefixes = _.merge(this.additionalPrefixes, prefixes);
         Object.keys(prefixes).map(function(prefix) {
-            var url = prefixes[prefix];
-            var regExp = isStrict === true ?
-                new RegExp('\<' + url + '(\\w+)\>', 'gi') :
-                new RegExp(url + '(\\w+)', 'gi');
+            let compactedQuery = null;
+            let uri = prefixes[prefix];
+            let regExp = isStrict === true ?
+                new RegExp('\<' + uri + '(\\w+)\>', 'gi') :
+                new RegExp(uri + '(\\w+)', 'gi');
 
-            var replacedContent = null;
-            if (content) {
-                replacedContent = content.replace(regExp, function(match, property) {
+            if (query) {
+                compactedQuery = query.replace(regExp, function(match, property) {
                     return prefix + '\:' + property;
                 });
             }
-            replacedContent ? content = replacedContent : false;
+
+            compactedQuery ? query = compactedQuery : false;
         });
 
-        return content;
+        return query;
     }
 
-    removeSingletonProperties(content, saveVariablesReplacement) {
-        var singletonProperty = 'singletonPropertyOf';
-        var triplePairsRegexp = new RegExp(this.triplePairsRegexpCode, 'gi');
-        var triplePairLinesRegexp = new RegExp(this.tripleLineRegexpCode, 'gi');
-        var triplePairElementsRegexp = new RegExp(this.tripleElementsRegexpCode, 'gi');
+    /**
+     * @param query
+     * @param saveReplacedVariables
+     * @returns {{result: *, deleted_uri: Array, replaced_variables: Array}}
+     */
+    removeSingletonProperties(query, saveReplacedVariables = false) {
+        let self = this;
+        let singletonProperty = 'singletonPropertyOf';
+        let triplePairsRegexp = new RegExp(this.triplePairsRegexpCode, 'gi');
+        let triplePairLinesRegexp = new RegExp(this.tripleLineRegexpCode, 'gi');
+        let triplePairElementsRegexp = new RegExp(this.tripleElementsRegexpCode, 'gi');
 
-        var deletedUri = [];
-        var replacedVariables = [];
+        let deletedUri = [];
+        let replacedVariables = [];
 
-        var result = content.replace(triplePairsRegexp, function(triplePair) {
+        let result = query.replace(triplePairsRegexp, function(triplePair) {
             // Don't replace triple pair, if there is no singleton property
             if (triplePair.indexOf(singletonProperty) === -1) {
                 return triplePair;
             }
 
             // Get triple pair lines
-            var triplePairLines = triplePair.match(triplePairLinesRegexp);
+            let triplePairLines = triplePair.match(triplePairLinesRegexp);
 
             // Group triple pair lines
-            var groupedTriplePair = triplePairLines[0].indexOf(singletonProperty) !== -1 ?
+            let groupedTriplePair = triplePairLines[0].indexOf(singletonProperty) !== -1 ?
                 triplePairLines[1] + triplePairLines[0] :
                 triplePairLines[0] + triplePairLines[1];
 
             // Get triple pair elements
-            var triplePairElements = groupedTriplePair.match(triplePairElementsRegexp).map(function(element) {
+            let triplePairElements = groupedTriplePair.match(triplePairElementsRegexp).map(function(element) {
                 return element.replace(/\.$/, '');
             });
 
-            // Save predicate, if it is URI
-            if (triplePairElements[1].charAt(0) !== '?' && triplePairElements[1].charAt(0) !== '&') {
+            // Save predicate, if it's not a variable
+            if (self.isVariable(triplePairElements[1]) === false) {
                 deletedUri.push(triplePairElements[1]);
             }
 
-            // If saveVariablesReplacement is true
-            if (saveVariablesReplacement) {
+            // Save replaced variables, if it necessary
+            if (saveReplacedVariables) {
                 replacedVariables.push({
                     variable: triplePairElements[1],
                     predicate: triplePairElements[5]
@@ -233,69 +268,77 @@ class SparqlFormatter {
         };
     }
 
-    addSingletonProperties(content, rebuild = false, spPostfix = '', spPrefix = 'sp_') {
+    /**
+     * @param query
+     * @param rebuild
+     * @param spPostfix
+     * @param spPrefix
+     * @returns {*}
+     */
+    addSingletonProperties(query, rebuild = false, spPostfix = '', spPrefix = 'sp_') {
         if (rebuild === true) {
-            content = sparqlFormatter.removeSingletonProperties(content).result;
+            query = sparqlFormatter.removeSingletonProperties(query).result;
         }
-        var tripleLineRegexp = new RegExp(this.tripleLineRegexpCode, 'gi');
-        var tripleElementsRegexp = new RegExp(this.tripleElementsRegexpCode, 'gi');
-        var singletonPropertyNumber = 0;
-        var replaceStartPosition = content.search('WHERE');
-        var thisObject = this;
 
-        var result = content.replace(tripleLineRegexp, function(triple, offset) {
+        let self = this;
+        let tripleLineRegexp = new RegExp(this.tripleLineRegexpCode, 'gi');
+        let tripleElementsRegexp = new RegExp(this.tripleElementsRegexpCode, 'gi');
+        let singletonPropertyNumber = 0;
+        let replaceStartPosition = query.search(this.getOperatorRegexp('where'));
+
+        let result = query.replace(tripleLineRegexp, function(triple, offset) {
             if (offset < replaceStartPosition) {
                 return triple;
             }
 
             singletonPropertyNumber++;
-            var singletonProperty = '?' + spPrefix + singletonPropertyNumber + spPostfix;
+            let singletonProperty = '?' + spPrefix + singletonPropertyNumber + spPostfix;
 
             // Get triple elements
-            var triplePairElements = triple.match(tripleElementsRegexp);
+            let triplePairElements = triple.match(tripleElementsRegexp);
 
             // Build triple with singleton property
             return triplePairElements[0] + ' ' + singletonProperty + ' ' + triplePairElements[2] + '.\r\n' +
-                singletonProperty + ' ' + thisObject.singletonPropertyUri + ' ' + triplePairElements[1] + '.\r\n';
+                singletonProperty + ' ' + self.singletonPropertyUri + ' ' + triplePairElements[1] + '.\r\n';
         });
 
         return this.beautify(result);
     }
 
     /**
-     * @param content
+     * @param operator
+     * @returns {RegExp}
      */
-    getMinusedVariables(content) {
-        return content.match(new RegExp(this.minusedVariablesRegexpCode, 'g'));
+    getOperatorRegexp(operator) {
+        return new RegExp(operator + '\\s*{', 'gi');
     }
 
     /**
-     * @param content
+     * @param query
      */
-    getSelectVariables(content) {
-        var result = content.match(new RegExp('^\\s*select(.*)(\\s+where)', 'mi'));
+    getSelectVariables(query) {
+        let result = query.match(new RegExp('^\\s*select(.*)(\\s+where)', 'mi'));
         if (result) {
             result.items = _.compact(result[1].split(' '));
         }
         return result;
     }
 
-    getUndefinedVariables(content) {
-        //TODO: this algorithm isn't consider nested SELECT/WHERE pairs
+    /**
+     * @param query
+     */
+    getUndefinedVariables(query) {
+        let queryLines = query.split('\n');
+        let whereClauseRegexp = new RegExp('where', 'i');
+        let whereClauseFound = false;
+        let inWhereClause = false;
+        let inWhereCounter = false;
+        let allVariables = [];
+        let whereVariables = [];
+        let lineVariablesRegexp = new RegExp(this.variablesRegexpCode, 'g');
 
-        var contentLines = content.split('\n');
-
-        var lineCount = contentLines.length;
-        var whereClauseRegexp = new RegExp('where', 'i');
-        var whereClauseFound = false;
-        var inWhereClause = false;
-        var inWhereCounter = false;
-        var allVariables = [];
-        var whereVariables = [];
-        var lineVariablesRegexp = new RegExp(this.variablesRegexpCode, 'g');
-
-        for (var i = 0; i < lineCount; i++) {
-            var currentString = contentLines[i];
+        for (let i = 0; i < queryLines.length; i++) {
+            let currentString = queryLines[i];
 
             if (whereClauseFound === false) {
                 if (whereClauseRegexp.test(currentString)) {
@@ -310,9 +353,9 @@ class SparqlFormatter {
                 }
             }
 
-            var lineVariables;
+            let lineVariables;
             while (lineVariables = lineVariablesRegexp.exec(currentString)) {
-                var variable = {
+                let variable = {
                     variable: lineVariables[0],
                     line: i,
                     startIndex: lineVariables.index,
@@ -336,9 +379,12 @@ class SparqlFormatter {
         return _.differenceBy(allVariables, whereVariables, 'variable');
     }
 
-    getAllTriples(content) {
-        var self = this;
-        var triples = content.match(new RegExp(this.tripleLineRegexpCode, 'gmi'));
+    /**
+     * @param query
+     */
+    getAllTriples(query) {
+        let self = this;
+        let triples = query.match(new RegExp(this.tripleLineRegexpCode, 'gmi'));
         if (triples) {
             return triples.map(function(triple) {
                 return self.removeExcessWhitespaces(triple);
@@ -348,34 +394,53 @@ class SparqlFormatter {
         return triples;
     }
 
-    isTripleLine(content, isStrict = false) {
-        var regexp = isStrict ? '^\\s*' + this.tripleLineRegexpCode + '$' : this.tripleLineRegexpCode;
-        return (new RegExp(regexp, 'gmi')).test(content);
+    /**
+     * @param line
+     * @param isStrict
+     * @returns {boolean}
+     */
+    isTripleLine(line, isStrict = false) {
+        let regexp = isStrict ? '^\\s*' + this.tripleLineRegexpCode + '$' : this.tripleLineRegexpCode;
+        return (new RegExp(regexp, 'gmi')).test(line);
     }
 
-    getAllPredicatesAndObjects(content) {
-        var predicatesAndObjects = [];
-        //TODO: ПРОВЕРИТЬ РАБОТОСПОСОБНОСТЬ!
-        var triples = this.getAllTriples(content);
+    /**
+     * @param query
+     * @returns {{subjects: Array, predicates: Array, objects: Array}}
+     */
+    getGroupedTripleData(query) {
+        let self = this;
+        let groupedTripleData = {
+            'subjects': [],
+            'predicates': [],
+            'objects': [],
+        };
+
+        let triples = this.getAllTriples(query);
         if (triples) {
             triples.forEach(function(triple) {
-                var tripleParts = SparqlFormatter.getTripleParts(triple);
-                predicatesAndObjects.push(tripleParts[1]);
-                predicatesAndObjects.push(tripleParts[2]);
+                let tripleParts = self.getTripleParts(triple);
+                if (_.includes(groupedTripleData.subjects, tripleParts[0])) { groupedTripleData.subjects.push(tripleParts[0]) }
+                if (_.includes(groupedTripleData.predicates, tripleParts[0])) { groupedTripleData.predicates.push(tripleParts[1]) }
+                if (_.includes(groupedTripleData.objects, tripleParts[0])) { groupedTripleData.objects.push(tripleParts[2]) }
             });
         }
 
-        return _.uniq(predicatesAndObjects);
+        return groupedTripleData;
     }
 
+    /**
+     * @param query
+     * @returns {*}
+     */
     replaceEmptyOperators(query) {
-        var newQuery = query.replace(new RegExp('\\s*\\w+\\s*{\\s*}', 'gmi'), function () {
+        let cleanedQuery = query.replace(new RegExp('\\s*\\w+\\s*{\\s*}', 'gmi'), function () {
             return '';
         });
-        if (newQuery === query) {
-            return newQuery;
+        if (cleanedQuery === query) {
+            return cleanedQuery;
         } else {
-            return this.replaceEmptyOperators(newQuery);
+            return this.replaceEmptyOperators(cleanedQuery);
         }
     }
 
@@ -384,52 +449,32 @@ class SparqlFormatter {
      * @returns {boolean}
      */
     isVariable(value) {
-        var regexp = new RegExp(this.variablesRegexpCode, 'i');
-        return regexp.test(value);
+        return (new RegExp(this.variablesRegexpCode, 'i')).test(value);
     }
 
     /**
-     * @param content
+     * @param line
      */
-    getFirstVariable(content) {
-        var regexp = new RegExp('(\\?\\w+)', 'i');
-        return content.match(regexp)[1];
+    getFirstVariable(line) {
+        return line.match(new RegExp('(\\?\\w+)', 'i'))[1];
     }
 
     /**
-     * @param content
+     * @param query
      */
-    removeExcessWhitespaces(content) {
-        var regexp = new RegExp('[\\s\.]*$', 'gm');
-        return content.replace(regexp, '');
+    removeExcessWhitespaces(query) {
+        return query.replace(new RegExp('[\\s\.]*$', 'gm'), '');
     }
 
     /**
      * @param triple
      * @returns {Array|*}
      */
-    static getTripleParts(triple) {
-        var tripleParts = triple.split(/\s/g).map(function(triplePart) {
-            return _.trim(triplePart, '\'');
+    getTripleParts(triple) {
+        let tripleParts = triple.split(/\s/g).map(function(triplePart) {
+            return _.trim(triplePart, '\'\.\(\)');
         });
         return _.compact(tripleParts);
-    }
-
-    /**
-     * @param uri
-     * @returns {string}
-     */
-    static getPrefix(uri) {
-        return _.split(uri, ':')[0] + ':';
-    }
-
-    /**
-     * @param content
-     * @param value
-     */
-    getFirstTripleByValue(content, value) {
-        var regexp = new RegExp('^\\s*\\?' + value + '.*', 'mi');
-        return content.match(regexp)[0];
     }
 
     /**
@@ -437,8 +482,7 @@ class SparqlFormatter {
      * @returns {boolean}
      */
     isRdfTypeUri(value) {
-        var regexp = new RegExp(this.rdfTypeUri, 'i');
-        return regexp.test(value);
+        return (new RegExp(this.rdfTypeUri, 'i')).test(value);
     }
 
     /**
@@ -446,18 +490,17 @@ class SparqlFormatter {
      * @returns {boolean}
      */
     isLabelUri(value) {
-        var regexp = new RegExp(this.labelUri, 'i');
-        return regexp.test(value);
+        return (new RegExp(this.labelUri, 'i')).test(value);
     }
 
     /**
-     * @param content
+     * @param query
      * @param subject
      * @param predicatesChain
      * @param rootClass
      * @returns {{rootClass: *, predicatesChain: *}}
      */
-    buildPredicatesChain(content, subject, predicatesChain, rootClass) {
+    buildPredicatesChain(query, subject, predicatesChain = [], rootClass = null) {
         if (_.isString(rootClass)) {
             return {
                 'rootClass': rootClass,
@@ -465,43 +508,49 @@ class SparqlFormatter {
             };
         }
 
-        var firstFoundedLine = _.trim(this.getFirstTripleByValue(content, subject));
-        var foundedTripleParts = SparqlFormatter.getTripleParts(firstFoundedLine);
-        var lineSubject = foundedTripleParts[0];
-        var linePredicate = foundedTripleParts[1];
-        var lineObject = _.trimEnd(foundedTripleParts[2], '.');
+        let firstFoundedLine = _.trim(query.match(new RegExp('^\\s*\\?' + subject + '.*', 'mi'))[0]);
+        let foundedTripleParts = this.getTripleParts(firstFoundedLine);
+        let lineSubject = foundedTripleParts[0];
+        let linePredicate = foundedTripleParts[1];
+        let lineObject = _.trimEnd(foundedTripleParts[2], '.');
 
         if (this.isVariable(linePredicate) ) {
-            var getObjectBySubjectRegexp = new RegExp('^\\s*\\' + linePredicate + '\\s+\\S+\\s+([\\S]+)', 'gm');
-            var match = getObjectBySubjectRegexp.exec(content);
+            let getObjectBySubjectRegexp = new RegExp('^\\s*\\' + linePredicate + '\\s+\\S+\\s+([\\S]+)', 'gm');
+            let match = getObjectBySubjectRegexp.exec(query);
             linePredicate = _.trimEnd(match[1], '.');
         }
         if (subject === lineSubject) {
             if (this.isRdfTypeUri(linePredicate)) {
-                return this.buildPredicatesChain(content, lineSubject, predicatesChain, lineObject);
+                return this.buildPredicatesChain(query, lineSubject, predicatesChain, lineObject);
             } else {
-                console.log('Wrong sparql syntax...');
+                console.warn('Wrong sparql syntax...');
             }
         }
         if (subject === lineObject) {
             predicatesChain.push(linePredicate);
-            return this.buildPredicatesChain(content, lineSubject, predicatesChain);
+            return this.buildPredicatesChain(query, lineSubject, predicatesChain);
         }
     }
 
+    /**
+     * @param chainData
+     * @returns {string}
+     */
     buildQueryByPredicatesChain(chainData) {
-        var query = '';
-        var currentObject = chainData.rootClass;
+        let query = '';
+        let currentObject = chainData.rootClass;
+
         _.forEach(chainData.predicatesChain, function(predicate, i) {
             currentObject = '?class_' + i;
-            var currentRestriction = '?restriction_' + i;
-            var previousKey = i - 1;
-            var previousClass = i === 0 ? chainData.rootClass : '?class_' + previousKey;
+            let currentRestriction = '?restriction_' + i;
+            let previousKey = i - 1;
+            let previousClass = i === 0 ? chainData.rootClass : '?class_' + previousKey;
             query +=
                 previousClass + ' crm2:restriction ' + currentRestriction + '.\n' +
                 currentRestriction + ' owl:onProperty ' + predicate + '.\n' +
                 currentRestriction + ' owl:allValuesFrom ' + currentObject + '.\n';
         });
+
         query += currentObject + ' crm2:restriction ?restriction_final.\n' +
             '?restriction_final rdfs:label ?label.\n' +
             '?restriction_final owl:onProperty ?property.\n';
