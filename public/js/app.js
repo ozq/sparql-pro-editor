@@ -185,7 +185,8 @@ function markUndefinedVariables() {
 markedVariablesWitoutParents = [];
 function markVariablesWithoutParents() {
     var editorContent = editor.getValue();
-    var predicatesAndObjects = sparqlFormatter.getAllPredicatesAndObjects(editorContent);
+    var groupedTripleData = sparqlFormatter.getGroupedTripleData(editorContent);
+    var predicatesAndObjects = groupedTripleData.predicates.concat(groupedTripleData.objects);
     var contentLines = editorContent.split('\n');
     var lineCount = contentLines.length;
     var lineVariablesRegexp = new RegExp(sparqlFormatter.variablesRegexpCode, 'g');
@@ -374,7 +375,7 @@ function autocompletePredicate() {
         return false;
     } else {
         // Build query
-        var queryData = sparqlFormatter.buildPredicatesChain(getEditorValue(), currentSubject, [], null);
+        var queryData = sparqlFormatter.buildPredicatesChain(getEditorValue(), currentSubject);
         var query = sparqlFormatter.addSingletonProperties(sparqlFormatter.expandUri(sparqlFormatter.buildQueryByPredicatesChain(queryData), getAllPrefixes()));
 
         console.log('Autocomplete query:');
