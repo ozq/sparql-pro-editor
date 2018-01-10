@@ -87,6 +87,15 @@ class WSparql {
                     }
                 }
             },
+            optional: {
+                toSparql: function (triple) {
+                    var query = 'OPTIONAL {\n' + triple + '\n}';
+                    return {
+                        query: query,
+                        whereVariables: [SparqlFormatter.getTripleParts(triple)[2]]
+                    }
+                }
+            }
         };
     }
 
@@ -151,9 +160,66 @@ class WSparql {
                     return '\nrelation(' + triple + ')';
                 });
             }
+            function simplifyRelations(query) {
+                var lines = query.split('\n');
+                var optionalRegexp = new RegExp('optional\\s*{', 'i');
+                var somePartRegexp = new RegExp('\\w+\\s*{', 'i');
+                var optionalDepth = 0;
+                var inOptionalPart = false;
+                var objectData = [];
+                var requiredRelationRegexp = new RegExp('requiredRelation\\((.+)\\)', 'i');
+                for (var i = 0; i < lines.length; i++) {
+                    var currentLine = lines[i];
+
+                    if (optionalRegexp.test(currentLine)) {
+                        inOptionalPart = true;
+                    } else {
+                        if (somePartRegexp.test(currentLine) === true) {
+                            inOptionalPart = false;
+                        }
+                    }
+
+                    if (inOptionalPart) {
+                        currentLine.indexOf('{') > -1 ? optionalDepth++ : false;
+                        currentLine.indexOf('}') > -1 ? optionalDepth-- : false;
+                        if (optionalDepth === 0) {
+                            inOptionalPart = false;
+                        }
+                    }
+
+                    if (self.sf.isTripleLine(currentLine, true)) {
+                        objectData[SparqlFormatter.getTripleParts(currentLine)[2]] = {
+                            optionalDepth: optionalDepth,
+                            lineNumber: i
+                        };
+                    }
+
+                    if (requiredRelationRegexp.test(currentLine)) {
+                        var relationContent = currentLine.match(requiredRelationRegexp)[1];
+                        var relationTriple = relationContent.split(', ')[0];
+                        var relationSubjectData = objectData[SparqlFormatter.getTripleParts(relationTriple)[0]];
+                        if (optionalDepth !== relationSubjectData.optionalDepth) {
+                            lines[i] = '';
+                            var newRelation = 'relation(' + relationContent + ')';
+                            lines.splice(relationSubjectData.lineNumber + 1, 0, newRelation);
+                        }
+                    }
+                }
+
+                query = lines.join('\n');
+
+                var complexRelationRegexp = new RegExp('optional\\s*{\\s*(relation\\(.+\\))\\s+\\}', 'gi');
+                while (complexRelationRegexp.test(query)) {
+                    query = query.replace(complexRelationRegexp, function (match, relationFunction) {
+                        return relationFunction;
+                    });
+                }
+
+                return query;
+            }
+
             var lines = _.compact(query.split('\n'));
             var lineCount = lines.length;
-            var tripleLineRegexp = new RegExp(self.sf.tripleLineRegexpCode, 'i');
             var optionalPartRegexp = new RegExp('\s*optional', 'i');
             var tripleData = [];
             var inRootOptionalPart = false;
@@ -167,7 +233,7 @@ class WSparql {
                     whereClauseFound = true;
                 } else {
                     if (whereClauseFound === true) {
-                        if (tripleLineRegexp.test(line)) {
+                        if (self.sf.isTripleLine(line)) {
                             var tripleParts = SparqlFormatter.getTripleParts(line);
                             if (self.sf.isLabelUri(tripleParts[1])) {
                                 var labelObject = {
@@ -232,14 +298,17 @@ class WSparql {
                     _.forEach(_.uniq(tripleItem.labels), function(labelItem) {
                         lines[labelItem.line] = '';
                     });
-                    lines[tripleItem.line] = 'requiredRelation(' + tripleItem.triple + ', ' + labelDepth + ')';
+                    var functionArgs = [];
+                    functionArgs.push(tripleItem.triple);
+                    if (labelDepth > 1) {
+                        functionArgs.push(labelDepth);
+                    }
+                    lines[tripleItem.line] = 'requiredRelation(' + functionArgs.join(', ') + ')';
                     selectVariables.push(tripleItem.object);
                 }
             });
 
-            query = requiredToRelationFunctions(
-                self.sf.replaceEmptyOperators(lines.join('\n'))
-            );
+            query = simplifyRelations(requiredToRelationFunctions(self.sf.replaceEmptyOperators(lines.join('\n'))));
 
             return {
                 query: query,
@@ -422,12 +491,13 @@ class WSparql {
         query = toRelationFunctions(query).query;
         query = toWearingFunctions(query).query;
 
-        var selectVariablesMatch = query.match(new RegExp('^\\s*select(.*)(\\s+where)', 'mi'));
-        var selectVariables = selectVariablesMatch[1].split(' ');
-        var queryWithoutSelectPart = query.replace(selectVariablesMatch[0], '');
-        var bodyVariables = queryWithoutSelectPart.match(new RegExp('[\\w]*[?<$:][\\w:\\/\\.\\-#>]+', 'gmi'));
-        var definedVariables = _.intersection(selectVariables, bodyVariables);
-        query = query.replace(selectVariablesMatch[1], ' ' + _.trim(definedVariables.join(' '), ' ') + ' ');
+        var selectVariablesMatch = this.sf.getSelectVariables(query);
+        if (selectVariablesMatch) {
+            var queryWithoutSelectPart = query.replace(selectVariablesMatch[0], '');
+            var bodyVariables = queryWithoutSelectPart.match(new RegExp('[\\w]*[?<$:][\\w:\\/\\.\\-#>]+', 'gmi'));
+            var definedVariables = _.intersection(selectVariablesMatch.items, bodyVariables);
+            query = query.replace(selectVariablesMatch[1], ' ' + _.trim(definedVariables.join(' '), ' ') + ' ');
+        }
 
         query = query.replace(new RegExp('^\\s*PREFIX.*$', 'gmi'), '');
 

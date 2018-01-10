@@ -1,9 +1,10 @@
 class LightEditor {
     constructor(configuration) {
-        this.selectedClass = null;
+        this.isInitialPropertiesInitialized = false;
         this.loadConfiguration(configuration);
-        this.loadClasses();
         this.initSelectedPropertyTree();
+        this.loadClasses();
+        this.loadInitialQuery();
         this.initBuildQueryButton();
     }
 
@@ -18,6 +19,9 @@ class LightEditor {
             this.buildQueryElement = this.loadConfigurationItem('buildQueryElement');
             this.sparqlClient = this.loadConfigurationItem('sparqlClient');
             this.wsparql = this.loadConfigurationItem('wsparql');
+            this.initialProperties = this.loadConfigurationItem('initialProperties', {});
+            this.initialQuery = this.loadConfigurationItem('initialQuery', '');
+            this.minusedVariables = this.loadConfigurationItem('minusedVariables', []);
         } else {
             console.error('Configuration must be instance of object!');
         }
@@ -37,6 +41,12 @@ class LightEditor {
             } else {
                 console.error('Option ' + option + ' must be passed and be defined!');
             }
+        }
+    }
+
+    loadInitialQuery() {
+        if (this.initialQuery && _.isEmpty(this.minusedVariables) === true) {
+            this.minusedVariables = this.sparqlFormatter.getMinusedVariables(this.initialQuery);
         }
     }
 
@@ -151,7 +161,6 @@ class LightEditor {
                 'PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\n' +
                 'PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n' +
                 'PREFIX owl: <http://www.w3.org/2002/07/owl#>\n' +
-                'PREFIX crm: <http://www.cidoc-crm.org/cidoc-crm/>\n' +
                 'SELECT ?property ?class ?label ?backLabel WHERE {\n' +
                 '   ?class crm2:restriction ?restriction.\n' +
                 '   {\n' +
@@ -215,66 +224,149 @@ class LightEditor {
         var selectedPropertyTreeElement = $(this.selectedPropertyTreeElement);
 
         propertyTreeElement.fancytree({
-             checkbox: true,
-             source: propertyTreeData,
-             extensions: ['glyph'],
-             icon: false,
-             glyph: {
-                 preset: "bootstrap3",
-                 map: {
-                     expanderClosed: "glyphicon glyphicon-menu-right",
-                     expanderLazy: "glyphicon glyphicon-menu-right",
-                     expanderOpen: "glyphicon glyphicon-menu-down"
-                 }
-             },
-             dblclick: function(event, nodeData) {
-                 self.loadProperties(nodeData.node.data.class, function (data) {
-                     var parentNodeData = nodeData;
-                     parentNodeData.node.removeChildren();
-                     data.forEach(function (item) {
-                         parentNodeData.node.addChildren({
-                             title: item.label.value + ' (' + self.sparqlFormatter.compactUri(item.property.value, {}, false) + ')',
-                             shortTitle: item.label.value,
-                             isInverse: item.isInverse,
-                             class: item.class.value,
-                             property: item.property.value,
-                             key: _.uniqueId()
-                         });
-                     });
-                 });
-             },
-             select: function(event, nodeData) {
-                 function goThrowParents(node, chain) {
-                     var parentNode = node.getParent();
-                     if (parentNode) {
-                         chain.push(node);
-                         goThrowParents(parentNode, chain);
-                     }
-                 }
+            checkbox: true,
+            source: propertyTreeData,
+            extensions: ['glyph'],
+            icon: false,
+            glyph: {
+                preset: "bootstrap3",
+                map: {
+                    expanderClosed: "glyphicon glyphicon-menu-right",
+                    expanderLazy: "glyphicon glyphicon-menu-right",
+                    expanderOpen: "glyphicon glyphicon-menu-down"
+                }
+            },
+            dblclick: function(event, nodeData) {
+                self.loadProperties(nodeData.node.data.class, function (data) {
+                    var parentNodeData = nodeData;
+                    data.forEach(function (item) {
+                        var foundNode = parentNodeData.node.findFirst(function (node) {
+                            return node.data.property === item.property.value;
+                        });
+                        if (!foundNode) {
+                            parentNodeData.node.addChildren({
+                                title: item.label.value + ' (' + self.sparqlFormatter.compactUri(item.property.value, {}, false) + ')',
+                                shortTitle: item.label.value,
+                                isInverse: item.isInverse,
+                                class: item.class.value,
+                                property: item.property.value,
+                                key: _.uniqueId()
+                            });
+                        }
+                    });
+                });
+            },
+            select: function(event, nodeData) {
+                function goThrowParents(node, chain) {
+                    var parentNode = node.getParent();
+                    if (parentNode) {
+                        chain.push(node);
+                        goThrowParents(parentNode, chain);
+                    }
+                }
 
-                 var node = nodeData.node;
-                 var chain = [];
-                 goThrowParents(node, chain);
-                 chain.reverse();
+                var node = nodeData.node;
+                var chain = [];
+                goThrowParents(node, chain);
+                chain.reverse();
 
-                 if (node.isSelected()) {
-                     var selectedPropertyTitle = [];
-                     chain.forEach(function (item) {
-                         selectedPropertyTitle.push(item.data.shortTitle);
-                     });
-                     selectedPropertyTreeElement.fancytree('getRootNode').addChildren({
-                         title: selectedPropertyTitle.join('.'),
-                         chain: chain
-                     });
-                 } else {
-                     $(self.selectedPropertyTreeElement).fancytree('getTree').findFirst(function (node) {
-                         return _.isEqual(node.data.chain, chain);
-                     }).remove();
-                 }
-             }
-         });
+                if (node.isSelected()) {
+                    var selectedPropertyTitle = [];
+                    chain.forEach(function (item) {
+                        selectedPropertyTitle.push(item.data.shortTitle);
+                    });
+                    var foundNode = selectedPropertyTreeElement.fancytree('getRootNode').addChildren({
+                        title: selectedPropertyTitle.join('.'),
+                        chain: chain
+                    });
+                    if (nodeData.node.data.isHidden) {
+                        foundNode.addClass('hidden-node');
+                    }
+                } else {
+                    $(self.selectedPropertyTreeElement).fancytree('getTree').findFirst(function (node) {
+                        return _.isEqual(node.data.chain, chain);
+                    }).remove();
+                    nodeData.node.data.isHidden = false;
+                }
+            }
+        });
 
-         $(this.propertyTreeElement).fancytree('option', 'source', propertyTreeData);
+        $(this.propertyTreeElement).fancytree('option', 'source', propertyTreeData);
+
+        if (this.isInitialPropertiesInitialized === false) {
+            self.buildInitialPropertiesTree();
+            this.isInitialPropertiesInitialized = true;
+        }
+    }
+
+    defineInitialPropertiesTree() {
+        var initialPropertiesTree = null;
+        if (this.initialProperties) {
+            var i;
+            var propertyPaths = [];
+            initialPropertiesTree = this.initialProperties;
+            for (i = initialPropertiesTree.length - 1; i >= 0; i -= 1) {
+                var currentItem = initialPropertiesTree[i];
+                var parentItem = _.find(initialPropertiesTree, function (foundItem) {
+                    return foundItem.node.data.variableName === currentItem.node.data.parentVariableName;
+                });
+                if (!parentItem) {
+                    parentItem = propertyPaths[currentItem.node.data.parentVariableName];
+                }
+                if (parentItem) {
+                    parentItem.node.children.push(currentItem);
+                    initialPropertiesTree.splice(i, 1);
+                    propertyPaths[currentItem.node.data.variableName] = currentItem;
+                }
+            }
+        }
+
+        this.initialPropertiesTree = initialPropertiesTree;
+
+        if (_.head(initialPropertiesTree)) {
+            var rootClass = _.head(initialPropertiesTree).node.data.class;
+            self.selectedClass = rootClass;
+            $(this.classesSelectElement).val(rootClass).change();
+        }
+
+        return this.initialPropertiesTree;
+    }
+
+    buildInitialPropertiesTree() {
+        var self = this;
+        function pushNodes(node, treeNode = null) {
+            if (node.data.parentVariableName === false) {
+                treeNode = $(self.propertyTreeElement).fancytree('getTree').getRootNode();
+            } else {
+                var newNodeData = node.data;
+                newNodeData.key = _.uniqueId();
+                newNodeData.title = newNodeData.shortTitle + ' (' + self.sparqlFormatter.compactUri(newNodeData.property) + ')';
+                var foundNode = treeNode.findFirst(function (node) {
+                    return node.data.property === newNodeData.property;
+                });
+
+                if (!foundNode) {
+                    treeNode = treeNode.addChildren(newNodeData);
+                } else {
+                    foundNode.data = _.merge(newNodeData, foundNode.data);
+                    treeNode = foundNode;
+                }
+
+                treeNode.setSelected();
+            }
+
+            node.children.forEach(function (childrenNode) {
+                pushNodes(childrenNode.node, treeNode);
+            });
+        }
+
+        if (_.head(this.initialPropertiesTree)) {
+            pushNodes(_.head(this.initialPropertiesTree).node);
+        }
+
+        $(self.propertyTreeElement).fancytree('getTree').visit(function (node) {
+            node.toggleExpanded();
+        });
     }
 
     initSelectedPropertyTree(data = []) {
@@ -324,7 +416,7 @@ class LightEditor {
             buildOptionItem(className, self.classesStructure[className]);
         }
 
-        classesSelect.addEventListener('change', function () {
+        $(self.classesSelectElement).change(function () {
             self.selectedClass = this.options[this.selectedIndex].value;
             self.loadProperties(self.selectedClass, function (data) {
                 var properties = [];
@@ -335,12 +427,13 @@ class LightEditor {
                         isInverse: item.isInverse
                     };
                 });
-                self.initPropertyTree(properties);
                 self.initSelectedPropertyTree([]);
+                self.initPropertyTree(properties);
             });
         });
 
         classesSelect.selectedIndex = -1;
+        self.defineInitialPropertiesTree();
     }
 
     initBuildQueryButton() {
@@ -389,23 +482,36 @@ class LightEditor {
             selectedNode.data.chain.forEach(function (chainNode) {
                 childProperties.push(chainNode.data.property);
                 if (_.has(properties, childProperties) === false) {
-                    _.set(properties, childProperties, {'isInverse': chainNode.data.isInverse});
+                    _.set(properties, childProperties, {
+                        'options': {
+                            'isInverse': chainNode.data.isInverse,
+                            'variableName': chainNode.data.variableName,
+                            'isHidden': chainNode.data.isHidden,
+                        }
+                    });
                 }
             });
         });
 
         function buildOptionalPart(property, childProperties, subjectVarName, objectVarName = '', query = '') {
+            var isInverse = false;
             objectVarName = '?' + self.defineVariableNameByUri(property, objectVarName);
+
+            if (_.has(childProperties, 'options.isInverse')) {
+                isInverse = childProperties.options.isInverse;
+            }
+            if (_.has(childProperties, 'options.variableName')) {
+                if (childProperties.options.variableName) {
+                    objectVarName = childProperties.options.variableName;
+                }
+            }
+            if (_.indexOf(self.minusedVariables, '-' + objectVarName) > -1) {
+                objectVarName = '-' + objectVarName;
+            }
+            delete childProperties.options;
+
             var optionalPlaceholder = '%optionalPlaceholder%';
             property = property.indexOf('http') === 0 ? '<' + property + '>' : property;
-
-            var isInverse = false;
-            if (_.has(childProperties, 'isInverse')) {
-                if (childProperties.isInverse === true) {
-                    isInverse = true;
-                }
-                delete childProperties.isInverse;
-            }
 
             var triple = isInverse ?
                 objectVarName + ' ' + property + ' ' + subjectVarName :
@@ -423,27 +529,61 @@ class LightEditor {
             return query;
         }
 
-        function buildQuery(properties) {
+        function buildQueryBody(properties) {
             var queryBody = '?resourceUri' + ' <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ' + '<' + self.selectedClass + '>' + '\n';
             _.forEach(properties, function(childProperties, property) {
                 queryBody = queryBody + buildOptionalPart(property, childProperties, '?resourceUri');
             });
             queryBody = queryBody.replace(new RegExp('%optionalPlaceholder%', 'gi'), '');
-            var selectedVariableNames = self.getSelectedVariableNames().join(' ');
+            return queryBody;
+        }
 
-            //TODO: This logic (add prefix part) could be encapsulated in compactUri method,
-            //TODO: just add additional param to this method, e.g. autoAddPrefixes.
+        function buildQueryPrefixes() {
             var prefixPart = '';
             _.forEach(self.sparqlFormatter.additionalPrefixes, function(uri, prefix) {
                 prefixPart = prefixPart + '\n' + 'PREFIX ' + prefix + ': ' + '<' + uri + '>';
             });
-
-            return self.sparqlFormatter.compactUri(
-                prefixPart + '\n' + 'SELECT ' + selectedVariableNames + ' WHERE {\n' + queryBody + '\n}'
-            );
+            return prefixPart;
         }
 
-        var query = self.wsparql.toWSparql(buildQuery(properties));
+        function buildQuery(properties) {
+            var queryBody = buildQueryBody(properties);
+            if (self.initialQuery) {
+                // In this case we build only query body
+                var queryLines = self.initialQuery.split('\n');
+                var i = 0;
+                var bracketsCounter = 0;
+                var inWhereClause = false;
+                var withoutWherePart = [];
+                for (i; i < queryLines.length; i++) {
+                    var currentLine = queryLines[i];
+                    if (inWhereClause === false) {
+                        if (currentLine.indexOf('WHERE') !== -1) {
+                            inWhereClause = true;
+                            withoutWherePart.push(currentLine);
+                        }
+                    }
+                    if (inWhereClause === true) {
+                        if (currentLine.indexOf('{') !== -1) { bracketsCounter++; }
+                        if (currentLine.indexOf('}') !== -1) { bracketsCounter--; }
+                    }
+                    if (bracketsCounter <= 0) { inWhereClause = false; }
+                    if (inWhereClause === false) {
+                        withoutWherePart.push(currentLine);
+                    }
+                }
+                return _.trim(withoutWherePart.join('\n'), '\"').replace(new RegExp('where\\s*{\\s*}', 'gi'), 'WHERE {\n' + queryBody + '}\n');
+            } else {
+                // In this case we build all query ourselves
+                var selectedVariableNames = self.getSelectedVariableNames().join(' ');
+                var prefixPart = buildQueryPrefixes();
+                return self.sparqlFormatter.compactUri(
+                    prefixPart + '\n' + 'SELECT ' + selectedVariableNames + ' WHERE {\n' + queryBody + '\n}'
+                );
+            }
+        }
+
+        var query = self.sparqlFormatter.compactUri(self.wsparql.toWSparql(buildQuery(properties)));
 
         console.log('Generated query:');
         console.log(query);

@@ -6,6 +6,7 @@ class SparqlFormatter {
         this.tripleLineRegexpCode = '(?:(?:' + this.uriRegexpCode + ')[\\s\\.]*){3}';
         this.tripleElementsRegexpCode = '[?<$\\w:][\\w:\\/\\.\\-#>]*[?!\\w>]';
         this.allUriRegexpCode = '[\\w<]+\\:[\\w#\\/\\.-\ v\>-]+';
+        this.minusedVariablesRegexpCode = '-\\?\\w+';
         this.singletonPropertyUri = '\<http://www.w3.org/1999/02/22-rdf-syntax-ns#singletonPropertyOf>';
         this.allPrefixesRegexpCode = '[\\w]+(?=:(?!\\/\\/))';
         this.excessLineRegexpCode = '(\\n\\s*){2}[^\\S\\t]';
@@ -14,7 +15,6 @@ class SparqlFormatter {
         this.rdfTypeUri = '(<http:\\/\\/www\\.w3\\.org\\/1999\\/02\\/22-rdf-syntax-ns#type>|rdf:type)';
         this.labelUri = '^(<http:\\/\\/www\\.w3\\.org\\/2000\\/01\\/rdf-schema#label>|rdfs:label)$';
         this.tripleElementRegexpCode = '^\\s*([?<$\\w][\\w:\\/\\.\\-#>]+)\\s*$';
-
         this.indentLength = options && options.indentLength ? options.indentLength : 4;
         this.additionalPrefixes = options && options.additionalPrefixes ? options.additionalPrefixes : {};
     }
@@ -143,7 +143,8 @@ class SparqlFormatter {
         return this.beautify(processContent);
     }
 
-    expandUri(content, prefixes) {
+    expandUri(content, prefixes = {}) {
+        prefixes = _.merge(this.additionalPrefixes, prefixes);
         Object.keys(prefixes).map(function(prefix) {
             var url = prefixes[prefix];
             var replacedContent = content.replace(new RegExp(prefix + ':(\\w+)', 'gi'), function(match, property) {
@@ -163,9 +164,12 @@ class SparqlFormatter {
                 new RegExp('\<' + url + '(\\w+)\>', 'gi') :
                 new RegExp(url + '(\\w+)', 'gi');
 
-            var replacedContent = content.replace(regExp, function(match, property) {
-                return prefix + '\:' + property;
-            });
+            var replacedContent = null;
+            if (content) {
+                replacedContent = content.replace(regExp, function(match, property) {
+                    return prefix + '\:' + property;
+                });
+            }
             replacedContent ? content = replacedContent : false;
         });
 
@@ -258,6 +262,24 @@ class SparqlFormatter {
         return this.beautify(result);
     }
 
+    /**
+     * @param content
+     */
+    getMinusedVariables(content) {
+        return content.match(new RegExp(this.minusedVariablesRegexpCode, 'g'));
+    }
+
+    /**
+     * @param content
+     */
+    getSelectVariables(content) {
+        var result = content.match(new RegExp('^\\s*select(.*)(\\s+where)', 'mi'));
+        if (result) {
+            result.items = _.compact(result[1].split(' '));
+        }
+        return result;
+    }
+
     getUndefinedVariables(content) {
         //TODO: this algorithm isn't consider nested SELECT/WHERE pairs
 
@@ -314,16 +336,28 @@ class SparqlFormatter {
         return _.differenceBy(allVariables, whereVariables, 'variable');
     }
 
-    getAllPredicatesAndObjects(content) {
-        var predicatesAndObjects = [];
-        var tripleLines = content.match(new RegExp(this.tripleLineRegexpCode, 'g'));
-
-        if (tripleLines) {
-            var self = this;
-            var triples = tripleLines.map(function(triple) {
+    getAllTriples(content) {
+        var self = this;
+        var triples = content.match(new RegExp(this.tripleLineRegexpCode, 'gmi'));
+        if (triples) {
+            return triples.map(function(triple) {
                 return self.removeExcessWhitespaces(triple);
             });
+        }
 
+        return triples;
+    }
+
+    isTripleLine(content, isStrict = false) {
+        var regexp = isStrict ? '^\\s*' + this.tripleLineRegexpCode + '$' : this.tripleLineRegexpCode;
+        return (new RegExp(regexp, 'gmi')).test(content);
+    }
+
+    getAllPredicatesAndObjects(content) {
+        var predicatesAndObjects = [];
+        //TODO: ПРОВЕРИТЬ РАБОТОСПОСОБНОСТЬ!
+        var triples = this.getAllTriples(content);
+        if (triples) {
             triples.forEach(function(triple) {
                 var tripleParts = SparqlFormatter.getTripleParts(triple);
                 predicatesAndObjects.push(tripleParts[1]);
