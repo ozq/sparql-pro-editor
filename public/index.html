@@ -316,29 +316,33 @@
     );
 </script>
 <script type="text/javascript">
+    let leSparqlFormatter = new SparqlFormatter({
+        additionalPrefixes: {
+            'crm2': 'http://sp7.ru/ontology/',
+            'rdf': 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
+            'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
+            'owl': 'http://www.w3.org/2002/07/owl#'
+        }
+    });
+
     new LightEditor({
         classesSelectElement: '#leClassesSelect',
         propertyTreeElement: '#lePropertyTree',
         selectedPropertyTreeElement: '#leSelectedPropertyTree',
         queryInputElement: '#leQueryInput',
         buildQueryElement: '#leBuildQuery',
-        sparqlFormatter: new SparqlFormatter({
-            additionalPrefixes: {
-                'crm2': 'http://sp7.ru/ontology/',
-                'rdf': 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
-                'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
-                'owl': 'http://www.w3.org/2002/07/owl#'
-            }
+        sparqlFormatter: leSparqlFormatter,
+        wsparql: new WSparql({
+            'sparqlFormatter': leSparqlFormatter
         }),
-        wsparql: new WSparql(),
         sparqlClient: new SparqlClient({
             graphIri: queryExectuionForm.getGraphIri(),
             requestUrl: queryExectuionForm.getEndpoint(),
             requestType: 'POST',
             requestDataType: 'jsonp',
             responseFormat: 'json',
-            debugMode: 'on',
-        }),
+            debugMode: 'on'
+        })
     });
 </script>
 

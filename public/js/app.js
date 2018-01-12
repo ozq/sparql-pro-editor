@@ -1,6 +1,8 @@
 var queryHistoryLocalRepository = new QueryHistoryLocalRepository();
 var queryLeavingConfirmation = new QueryLeavingConfirmation('#queryLeavingConfirmation');
-var wsparqlService = new WSparql();
+var wsparqlService = new WSparql({
+    'sparqlFormatter': new SparqlFormatter()
+});
 var commonPrefixes = new CommonPrefixes(editor);
 var sparqlFormatter = new SparqlFormatter({
     indentLength: editor.indentLength

@@ -2,7 +2,9 @@
 
 var editor = buildCodeEditor();
 var editorCopy = buildCodeEditorCopy(editor);
-var wssparql = new WSparql();
+var wssparql = new WSparql({
+    'sparqlFormatter': new SparqlFormatter()
+});
 
 function buildCodeEditor() {
     return YASQE.fromTextArea(
