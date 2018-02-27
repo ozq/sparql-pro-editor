@@ -102,6 +102,13 @@ class QueryExecutionForm {
 
             // Get form data
             var query = getEditorValue();
+
+            // Filter * from select part
+            query = query.replace(new RegExp('SELECT\\s+(.+)\\sWHERE', 'i'), function (line, variablesLine) {
+                return 'SELECT ' + (variablesLine.includes('*') ? '*' : variablesLine) + ' WHERE';
+            });
+
+            // Translate to wsparql
             if ($('#buttonEnableWSparql').is(':checked')) {
                 query = sparqlFormatter.addSingletonProperties(query, true);
             }

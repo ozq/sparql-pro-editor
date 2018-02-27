@@ -29,11 +29,11 @@
     <link rel="manifest" href="images/favicon/manifest.json"/>
 
     <link rel="stylesheet" type="text/css" href="bower_components/bootstrap/dist/css/bootstrap.min.css"/>
-    <link rel='stylesheet' type="text/css" href='bower_components/glyphicons-only-bootstrap/css/bootstrap.min.css'/>
     <link rel="stylesheet" type="text/css" href="bower_components/tether/dist/css/tether.min.css"/>
     <link rel="stylesheet" type="text/css" href="bower_components/yasqe/dist/yasqe.min.css"/>
     <link rel="stylesheet" type="text/css" href="bower_components/font-awesome/css/font-awesome.min.css"/>
     <link rel="stylesheet" type="text/css" href="bower_components/jquery.fancytree/dist/skin-bootstrap/ui.fancytree.min.css"/>
+    <link rel="stylesheet" type="text/css" href="bower_components/sparql-core/src/styles/light-editor-styles.css"/>
     <link rel="stylesheet" type="text/css" href="css/app.css"/>
 
     <script type="text/javascript" src="bower_components/jquery/dist/jquery.min.js"></script>
@@ -44,14 +44,14 @@
     <script type="text/javascript" src="bower_components/remarkable-bootstrap-notify/dist/bootstrap-notify.min.js"></script>
     <script type="text/javascript" src="bower_components/jquery-ui/jquery-ui.min.js"></script>
     <script type="text/javascript" src="bower_components/jquery.fancytree/dist/jquery.fancytree-all.min.js"></script>
-    <script src="bower_components/jquery.fancytree/dist/src/jquery.fancytree.dnd5.js"></script>
+    <script type="text/javascript" src="bower_components/jquery.fancytree/dist/src/jquery.fancytree.dnd5.js"></script>
 
     <!-- CORE SCRIPTS -->
     <script type="text/javascript" src="js/AppConfig.js"></script>
-    <script type="text/javascript" src="js/WSparql.js"></script>
-    <script type="text/javascript" src="js/SparqlFormatter.js"></script>
-    <script type="text/javascript" src="js/SparqlClient.js"></script>
-    <script type="text/javascript" src="js/LightEditor.js"></script>
+    <script type="text/javascript" src="bower_components/sparql-core/WSparql.js"></script>
+    <script type="text/javascript" src="bower_components/sparql-core/SparqlFormatter.js"></script>
+    <script type="text/javascript" src="bower_components/sparql-core/SparqlClient.js"></script>
+    <script type="text/javascript" src="bower_components/sparql-core/LightEditor.js"></script>
 </head>
 <body>
 <!-- MODALS -->
@@ -195,9 +195,8 @@
                     WSparql
                 </label>
             </div>
-            <!--
+
             <button class="btn btn-secondary" type="button" id="buttonToWsparql">To WSparql</button>
-            -->
             <button class="btn btn-secondary" type="button" id="buttonOpenLightEditor" data-toggle="modal" data-target="#lightEditor">Light Editor</button>
         </form>
     </div>
@@ -317,29 +316,33 @@
     );
 </script>
 <script type="text/javascript">
+    let leSparqlFormatter = new SparqlFormatter({
+        additionalPrefixes: {
+            'crm2': 'http://sp7.ru/ontology/',
+            'rdf': 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
+            'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
+            'owl': 'http://www.w3.org/2002/07/owl#'
+        }
+    });
+
     new LightEditor({
         classesSelectElement: '#leClassesSelect',
         propertyTreeElement: '#lePropertyTree',
         selectedPropertyTreeElement: '#leSelectedPropertyTree',
         queryInputElement: '#leQueryInput',
         buildQueryElement: '#leBuildQuery',
-        sparqlFormatter: new SparqlFormatter({
-            additionalPrefixes: {
-                'crm2': 'http://sp7.ru/ontology/',
-                'rdf': 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
-                'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
-                'owl': 'http://www.w3.org/2002/07/owl#'
-            }
+        sparqlFormatter: leSparqlFormatter,
+        wsparql: new WSparql({
+            'sparqlFormatter': leSparqlFormatter
         }),
-        wsparql: new WSparql(),
         sparqlClient: new SparqlClient({
             graphIri: queryExectuionForm.getGraphIri(),
             requestUrl: queryExectuionForm.getEndpoint(),
             requestType: 'POST',
             requestDataType: 'jsonp',
             responseFormat: 'json',
-            debugMode: 'on',
-        }),
+            debugMode: 'on'
+        })
     });
 </script>
 
