@@ -1,4 +1,4 @@
-class QueryLeavingConfirmation {
+export default class QueryLeavingConfirmation {
     constructor(element) {
         this.element = $(element);
     }

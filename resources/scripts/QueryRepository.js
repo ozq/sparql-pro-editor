@@ -1,4 +1,4 @@
-class QueryRepository {
+export default class QueryRepository {
     constructor(historyRepository) {
         this.historyRepository = historyRepository ? historyRepository : null;
     };

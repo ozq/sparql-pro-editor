@@ -1,4 +1,4 @@
-FROM node:7.6
+FROM node:9
 
 RUN apt-get update & apt-get install git
 

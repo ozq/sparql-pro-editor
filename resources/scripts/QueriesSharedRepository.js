@@ -1,11 +1,13 @@
-class QueriesSharedRepository extends QueryRepository {
+import QueryRepository from './QueryRepository';
+
+export default class QueriesSharedRepository extends QueryRepository {
     constructor(historyRepository) {
         super(historyRepository);
         this.endpoint = 'api/v1/sharedQuery';
     };
 
     getAll() {
-        var items = [];
+        let items = [];
         $.ajax({
             method: 'GET',
             url: this.endpoint,
@@ -20,7 +22,7 @@ class QueriesSharedRepository extends QueryRepository {
     };
 
     get(id) {
-        var items;
+        let items;
 
         $.ajax({
             method: 'GET',
@@ -36,7 +38,7 @@ class QueriesSharedRepository extends QueryRepository {
     };
 
     add(item) {
-        var newItem;
+        let newItem;
         $.ajax({
             method: 'POST',
             url: this.endpoint,

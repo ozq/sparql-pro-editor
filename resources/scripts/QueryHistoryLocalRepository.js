@@ -1,13 +1,13 @@
-class QueryHistoryLocalRepository {
+export default class QueryHistoryLocalRepository {
     constructor() {
         this.key = 'spe.queryHistory';
         this.maxItemsCount = 9;
     };
 
     getAll() {
-        var all = JSON.parse(localStorage.getItem(this.key));
+        let all = JSON.parse(localStorage.getItem(this.key));
 
-        var items = all ? all : [];
+        let items = all ? all : [];
         items = _.sortBy(items, [function(item) { return item.created_at; }]).reverse();
 
         return items;
@@ -20,7 +20,7 @@ class QueryHistoryLocalRepository {
     };
 
     getByQueryId(queryId, repository) {
-        var items = _.filter(this.getAll(), function(item) {
+        let items = _.filter(this.getAll(), function(item) {
             return parseInt(item.queryId) === parseInt(queryId) && item.repository === repository;
         });
 
@@ -29,22 +29,22 @@ class QueryHistoryLocalRepository {
 
     add(item) {
         item = this.map(item);
-        var items = this.getAll();
+        let items = this.getAll();
         items.push(item);
         this.save(items);
         return item;
     };
 
     remove(id) {
-        var index = this.getIndexById(id);
-        var items = this.getAll();
+        let index = this.getIndexById(id);
+        let items = this.getAll();
         items.splice(index, 1);
         this.save(items);
     };
 
     clearHistoryByQueryId(id) {
-        var items = this.getAll();
-        var filteredItems = _.filter(items, function(item) { return parseInt(item.queryId) !== parseInt(id); });
+        let items = this.getAll();
+        let filteredItems = _.filter(items, function(item) { return parseInt(item.queryId) !== parseInt(id); });
         this.save(filteredItems);
     }
 
@@ -57,7 +57,7 @@ class QueryHistoryLocalRepository {
     };
 
     getIndexById(id) {
-        var ids = this.getAll().map(function(item){return item.id;});
+        let ids = this.getAll().map(function(item){return item.id;});
         return ids.indexOf(parseInt(id));
     };
 

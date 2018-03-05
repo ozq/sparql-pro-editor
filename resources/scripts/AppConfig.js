@@ -1,10 +1,10 @@
-class AppConfig {
+export default class AppConfig {
     constructor() {
         this.isBackendInstalled = this.getIsBackendInstalled();
     }
 
     getIsBackendInstalled() {
-        var isBackendInstalled = false;
+        let isBackendInstalled = false;
         $.ajax({
             url: '/isBackendInstalled',
             async: false,
@@ -15,6 +15,12 @@ class AppConfig {
 
         return isBackendInstalled;
     }
-}
 
-var appConfig = new AppConfig();
+    isWSparqlEnabled() {
+        return localStorage.getItem('spe.isWSparqlEnabled') === 'true';
+    }
+
+    setIsWSparqlEnabled(value) {
+        localStorage.setItem('spe.isWSparqlEnabled', value);
+    }
+}

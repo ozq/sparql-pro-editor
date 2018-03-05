@@ -59,7 +59,7 @@ services:
     working_dir: /var/www
     volumes_from:
       - app
-    command: bash -c 'bower install --allow-root'
+    command: bash -c 'bower install --allow-root && npm install && npm run devbuild'
 
 volumes:
   dbdata:

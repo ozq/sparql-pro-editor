@@ -1,4 +1,4 @@
-class QuerySettingsRepository {
+export default class QuerySettingsRepository {
     constructor() {
         this.key = 'spe.querySettingsRepository';
         this.items = [];
@@ -6,17 +6,17 @@ class QuerySettingsRepository {
     };
 
     getAll() {
-        var all = JSON.parse(localStorage.getItem(this.key));
-        var items = all ? all : [];
+        let all = JSON.parse(localStorage.getItem(this.key));
+        let items = all ? all : [];
 
         return _.uniqWith(items, _.isEqual).reverse();
     };
 
     add(item) {
         item.id = _.now();
-        var items = this.getAll().reverse();
+        let items = this.getAll().reverse();
 
-        var uniqueItems =  _.filter(items, function(o) {
+        let uniqueItems =  _.filter(items, function(o) {
             return o.endpoint !== item.endpoint || o.default_graph_uri !== item.default_graph_uri;
         });
         uniqueItems.push(item);

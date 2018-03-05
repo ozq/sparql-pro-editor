@@ -1,27 +1,26 @@
-class QueryList {
-    constructor(element, repository, editor) {
+export default class QueryList {
+    constructor(element, repository, codeEditor) {
         this.element = $(element);
         this.elementId = element;
         this.repository = repository;
-        this.editor = editor;
+        this.codeEditor = codeEditor;
         this.buildList();
         this.initListeners();
     };
 
     buildList() {
-        var items = this.repository.getAll();
+        let items = this.repository.getAll();
         if (!_.isEmpty(items)) {
-            var thisObject = this;
-            var listContent = '';
-            items.forEach(function(item) {
-                listContent += thisObject.buildListItem(item.id, item.name);
-            });
+            let listContent = '';
+            items.forEach(item => {
+                listContent += this.buildListItem(item.id, item.name);
+            }, this);
             this.element.hide().html(listContent).fadeIn('slow');
         }
     }
 
     buildListItem(id, name, isNew) {
-        var className = "query-item list-group-item " + (isNew ? 'not-saved'  : '');
+        let className = "query-item list-group-item " + (isNew ? 'not-saved'  : '');
 
         return '' +
             "<a href='#' data-id='" + id + "' class='" + className + "'>" +
@@ -51,11 +50,10 @@ class QueryList {
     }
 
     buildQueryHistoryData(items) {
-        var history = [];
-        var thisObject = this;
-        items ? items.forEach(function(item) {
-            history.push(thisObject.buildQueryHistoryItem(item));
-        }) : '';
+        let history = [];
+        items ? items.forEach(item => {
+            history.push(this.buildQueryHistoryItem(item));
+        }, this) : '';
         return history.length ? history.join('') : 'No data yet';
     }
 
@@ -82,23 +80,23 @@ class QueryList {
     }
 
     handleButtonsClick() {
-        var queryListElement = this.element;
+        let queryListElement = this.element;
         this.element.on('click', '.buttonRenameQuery', function() {
-            var renameBlock = $(this).closest('.list-group-item').find('.query-item_rename');
-            var renameInput = renameBlock.find('.newQueryName');
+            let renameBlock = $(this).closest('.list-group-item').find('.query-item_rename');
+            let renameInput = renameBlock.find('.newQueryName');
             renameBlock.slideToggle(100);
             queryListElement.find('.query-item_rename').not(renameBlock).hide();
             renameInput.focus();
         });
         this.element.on('click', '.buttonViewQueryHistory', function() {
-            var historyBlock = $(this).closest('.list-group-item').find('.query-item_history');
+            let historyBlock = $(this).closest('.list-group-item').find('.query-item_history');
             historyBlock.slideToggle(100);
             queryListElement.find('.query-item_history').not(historyBlock).hide();
         });
     }
 
     handleWindowClose() {
-        var thisObject = this;
+        let thisObject = this;
         window.onbeforeunload = function() {
             if (thisObject.element.find('.list-group-item.not-saved').length) {
                 return 'There are some not-saved queries. Do you want to save them?';
@@ -107,23 +105,23 @@ class QueryList {
     }
 
     handleEditorChange() {
-        var thisObject = this;
-        thisObject.editor.on('change', function(editor) {
-            var selectedId = thisObject.getActiveItemId();
+        let self = this;
+        self.codeEditor.editor.on('change', function(editor) {
+            let selectedId = self.getActiveItemId();
             if (editor.getOption('id') === selectedId) {
-                thisObject.element.find(".list-group-item[data-id='" + selectedId + "']").addClass('not-saved');
+                self.element.find(".list-group-item[data-id='" + selectedId + "']").addClass('not-saved');
             }
         });
     }
 
     handleSaveNewQueryName() {
-        var thisObject = this;
-        thisObject.element.on('keypress', '.newQueryName', function(e) {
+        let self = this;
+        self.element.on('keypress', '.newQueryName', function(e) {
             if (e.which === 13){
-                var item = thisObject.repository.get($(this).data('id'));
+                let item = self.repository.get($(this).data('id'));
                 if (item) {
                     item.name = $(this).val();
-                    thisObject.repository.put(item);
+                    self.repository.put(item);
                     $(this).closest('.list-group-item').find('.query-item_title').text($(this).val());
                     $(this).parent('.query-item_rename').slideToggle(100);
                 } else {

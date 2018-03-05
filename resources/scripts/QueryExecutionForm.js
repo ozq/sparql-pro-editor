@@ -1,22 +1,15 @@
-class QueryExecutionForm {
-    constructor(form, querySettingsList, querySettingsRepository) {
-        this.form = $(form);
-        this.querySettingsList = $(querySettingsList);
-        this.querySettingsRepository = querySettingsRepository;
+export default class QueryExecutionForm {
+    constructor(configuration) {
+        this.form = $(configuration.form);
+        this.querySettingsList = $(configuration.querySettingsList);
+        this.querySettingsRepository = configuration.querySettingsRepository;
+        this.sparqlFormatter = configuration.sparqlFormatter;
+        this.sparqlClient = configuration.sparqlClient;
+        this.codeEditor = configuration.codeEditor;
         this.key = 'spe.queryExecutionFormData';
-        this.initSparqlClient();
         this.buildForm();
         this.initListeners();
     };
-
-    initSparqlClient() {
-        this.sparqlClient = new SparqlClient({
-            graphIri: '',
-            requestType: 'POST',
-            requestDataType: 'html',
-            debugMode: 'on',
-        });
-    }
 
     buildForm() {
         this.buildQuerySettingsList();
@@ -25,9 +18,9 @@ class QueryExecutionForm {
 
     fillForm(parameters) {
         if (parameters) {
-            var form = this.form;
+            let form = this.form;
             parameters.forEach(function(item) {
-                var input = form.find('input[name="' + item.name + '"]');
+                let input = form.find('input[name="' + item.name + '"]');
                 if (input.length) {
                     input.val(item.value);
                 }
@@ -36,12 +29,12 @@ class QueryExecutionForm {
     }
 
     buildQuerySettingsList() {
-        var self = this;
-        var querySettingsItems = this.querySettingsRepository.getAll();
+        let self = this;
+        let querySettingsItems = this.querySettingsRepository.getAll();
 
         self.querySettingsList.html('');
         querySettingsItems.forEach(function(querySettings) {
-            var selectItemText = querySettings.endpoint + ' (' + querySettings.default_graph_uri + ')';
+            let selectItemText = querySettings.endpoint + ' (' + querySettings.default_graph_uri + ')';
             self.querySettingsList.append($('<option></option>').attr('value', querySettings.id).text(selectItemText));
         });
     }
@@ -55,13 +48,13 @@ class QueryExecutionForm {
     }
 
     initListeners() {
-        var self = this;
+        let self = this;
 
         this.form.submit(function(e) {
             e.preventDefault();
             function showResult(queryTimeExecutionStart) {
-                var queryTimeExecutionEnd = new Date().getTime();
-                var queryTimeExecution = queryTimeExecutionEnd - queryTimeExecutionStart;
+                let queryTimeExecutionEnd = new Date().getTime();
+                let queryTimeExecution = queryTimeExecutionEnd - queryTimeExecutionStart;
                 $('.query-execution-result_loader').hide();
                 $('.query-execution-time_value').html(queryTimeExecution + ' ms.');
                 $('.query-execution-time').show();
@@ -76,7 +69,7 @@ class QueryExecutionForm {
                 $('.query-execution-result_loader').show();
             }
             function sendRequest(endpoint, parameters, responseElement) {
-                var queryTimeExecutionStart = new Date().getTime();
+                let queryTimeExecutionStart = new Date().getTime();
                 if (method === 'POST') {
                     self.sparqlClient.requestUrl = endpoint;
                     self.sparqlClient.graphIri = parameters['default-graph-uri'];
@@ -92,7 +85,7 @@ class QueryExecutionForm {
                         }
                     );
                 } else {
-                    var requestUrl = endpoint + '?' + jQuery.param(parameters);
+                    let requestUrl = endpoint + '?' + jQuery.param(parameters);
                     responseElement.on('load', function() {
                         $(this).show();
                         showResult(queryTimeExecutionStart);
@@ -101,7 +94,7 @@ class QueryExecutionForm {
             }
 
             // Get form data
-            var query = getEditorValue();
+            let query = self.codeEditor.getEditorValue(true);
 
             // Filter * from select part
             query = query.replace(new RegExp('SELECT\\s+(.+)\\sWHERE', 'i'), function (line, variablesLine) {
@@ -109,12 +102,12 @@ class QueryExecutionForm {
             });
 
             // Translate to wsparql
-            if ($('#buttonEnableWSparql').is(':checked')) {
-                query = sparqlFormatter.addSingletonProperties(query, true);
+            if (self.codeEditor.appConfig.isWSparqlEnabled()) {
+                query = self.sparqlFormatter.addSingletonProperties(query, true);
             }
-            var method = query.length >= 1900 ? 'POST' : 'GET';
-            var endpoint = self.getEndpoint();
-            var graphUri = self.getGraphIri();
+            let method = query.length >= 1900 ? 'POST' : 'GET';
+            let endpoint = self.getEndpoint();
+            let graphUri = self.getGraphIri();
 
             // Save form data
             localStorage.setItem(self.key, JSON.stringify($(this).serializeArray()));
@@ -124,13 +117,13 @@ class QueryExecutionForm {
             });
             self.buildQuerySettingsList();
 
-            var parameters = {
+            let parameters = {
                 'default-graph-uri': graphUri,
                 'query': query,
                 'debug': 'on'
             };
 
-            var responseElement = method === 'POST' ?
+            let responseElement = method === 'POST' ?
                 $('div.query-execution-result_response') :
                 $('iframe.query-execution-result_response');
 
@@ -141,8 +134,8 @@ class QueryExecutionForm {
         });
 
         this.querySettingsList.change(function(e) {
-            var parameters = [];
-            var selectedQuerySettings = self.querySettingsRepository.get($(this).val());
+            let parameters = [];
+            let selectedQuerySettings = self.querySettingsRepository.get($(this).val());
 
             if (selectedQuerySettings) {
                 Object.keys(selectedQuerySettings).forEach(function(key) {

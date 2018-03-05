@@ -1,12 +1,14 @@
-class QueriesLocalRepository extends QueryRepository {
+import QueryRepository from './QueryRepository';
+
+export default class QueriesLocalRepository extends QueryRepository {
     constructor(historyRepository) {
         super(historyRepository);
         this.key = 'spe.localQueries';
     };
 
     getAll() {
-        var all = JSON.parse(localStorage.getItem(this.key));
-        var items = all ? all : [];
+        let all = JSON.parse(localStorage.getItem(this.key));
+        let items = all ? all : [];
 
         if (!items.length) {
             items.push(this.buildItem());
@@ -24,7 +26,7 @@ class QueriesLocalRepository extends QueryRepository {
 
     add(item) {
         item.updated_at = this.getCurrentUpdatedAtMark();
-        var items = this.getAll();
+        let items = this.getAll();
         items.push(item);
         this.save(items);
         return item;
@@ -32,14 +34,14 @@ class QueriesLocalRepository extends QueryRepository {
 
     put(item) {
         item.updated_at = this.getCurrentUpdatedAtMark();
-        var items = this.getAll();
+        let items = this.getAll();
         items[this.getIndexById(item.id)] = item;
         this.save(items);
     };
 
     remove(id) {
-        var index = this.getIndexById(id);
-        var items = this.getAll();
+        let index = this.getIndexById(id);
+        let items = this.getAll();
         items.splice(index, 1);
         this.save(items);
     };
@@ -53,7 +55,7 @@ class QueriesLocalRepository extends QueryRepository {
     };
 
     getIndexById(id) {
-        var ids = this.getAll().map(function(item){return item.id;});
+        let ids = this.getAll().map(function(item){return item.id;});
         return ids.indexOf(parseInt(id));
     };
 
@@ -69,4 +71,4 @@ class QueriesLocalRepository extends QueryRepository {
             'updated_at': this.getCurrentUpdatedAtMark()
         };
     }
-}
+};
