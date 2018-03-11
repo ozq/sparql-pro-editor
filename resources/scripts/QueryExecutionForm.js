@@ -20,7 +20,7 @@ export default class QueryExecutionForm {
         if (parameters) {
             let form = this.form;
             parameters.forEach(function(item) {
-                let input = form.find('input[name="' + item.name + '"]');
+                let input = form.find('[name="' + item.name + '"]');
                 if (input.length) {
                     input.val(item.value);
                 }
@@ -47,6 +47,10 @@ export default class QueryExecutionForm {
         return this.form.find('input[name="default_graph_uri"]').val();
     }
 
+    getAuthMethod() {
+        return this.form.find('select[name="auth_method"]').val();
+    }
+
     initListeners() {
         let self = this;
 
@@ -68,22 +72,33 @@ export default class QueryExecutionForm {
                 $('.query-execution-result_response').hide();
                 $('.query-execution-result_loader').show();
             }
-            function sendRequest(endpoint, parameters, responseElement) {
+            function sendRequest(endpoint, parameters, responseElement, method) {
                 let queryTimeExecutionStart = new Date().getTime();
                 if (method === 'POST') {
-                    self.sparqlClient.requestUrl = endpoint;
-                    self.sparqlClient.graphIri = parameters['default-graph-uri'];
-                    self.sparqlClient.execute(
-                        query,
-                        function(data) {
+                    let data = {
+                        'endpoint': endpoint,
+                        'auth_method': self.getAuthMethod(),
+                        'data': {
+                            'query': query,
+                            'debug': 'no',
+                            'format': 'html',
+                            'default-graph-uri': parameters['default-graph-uri'],
+                        }
+                    };
+                    $.ajax({
+                        data: data,
+                        type: 'POST',
+                        url: '/sparql',
+                        dataType: 'json',
+                        success: function (data) {
                             showResult(queryTimeExecutionStart);
-                            responseElement.html(data).show();
+                            responseElement.html(data.responseText).show();
                         },
-                        function(data) {
+                        error: function (data) {
                             showResult(queryTimeExecutionStart);
                             responseElement.html(data.responseText).show();
                         }
-                    );
+                    });
                 } else {
                     let requestUrl = endpoint + '?' + jQuery.param(parameters);
                     responseElement.on('load', function() {
@@ -93,27 +108,31 @@ export default class QueryExecutionForm {
                 }
             }
 
-            // Get form data
+            // Получаем текущий запрос из редактора
             let query = self.codeEditor.getEditorValue(true);
 
-            // Filter * from select part
+            // Удаляем все переменные из SELECT-части, если указана '*'
             query = query.replace(new RegExp('SELECT\\s+(.+)\\sWHERE', 'i'), function (line, variablesLine) {
                 return 'SELECT ' + (variablesLine.includes('*') ? '*' : variablesLine) + ' WHERE';
             });
 
-            // Translate to wsparql
+            // Если в редакторе отмечена галочка "wsparql" - переводим запрос в wsparql
             if (self.codeEditor.appConfig.isWSparqlEnabled()) {
                 query = self.sparqlFormatter.addSingletonProperties(query, true);
             }
-            let method = query.length >= 1900 ? 'POST' : 'GET';
+
             let endpoint = self.getEndpoint();
             let graphUri = self.getGraphIri();
 
-            // Save form data
+            // Если запрос слишком большой или в url'e указаны данные авторизации - шлем POST'ом
+            let method = query.length >= 1900 || endpoint.match(new RegExp('\\w+:\\w+@')) ? 'POST' : 'GET';
+
+            // Сохраняем результат
             localStorage.setItem(self.key, JSON.stringify($(this).serializeArray()));
             self.querySettingsRepository.add({
                 'default_graph_uri': graphUri,
-                'endpoint': endpoint
+                'endpoint': endpoint,
+                'auth_method': self.getAuthMethod()
             });
             self.buildQuerySettingsList();
 
@@ -128,7 +147,7 @@ export default class QueryExecutionForm {
                 $('iframe.query-execution-result_response');
 
             hideLastResult();
-            sendRequest(endpoint, parameters, responseElement);
+            sendRequest(endpoint, parameters, responseElement, method);
 
             $('#queryExecutionResult').modal('show');
         });

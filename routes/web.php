@@ -24,3 +24,5 @@ $app->get('/api/v1/sharedQuery', 'SharedQueryController@index');
 $app->post('/api/v1/sharedQuery', 'SharedQueryController@store');
 $app->put('/api/v1/sharedQuery/{id}', 'SharedQueryController@update');
 $app->delete('/api/v1/sharedQuery/{id}', 'SharedQueryController@delete');
+
+$app->post('/sparql', 'SparqlController@execute');

@@ -177,6 +177,15 @@
                             <label>URL SPARQL Endpoint:</label>
                             <input type="text" name="endpoint" class="form-control" placeholder="URL SPARQL Endpoint" required>
                         </div>
+                        <div class="form-group">
+                            <label>Authentication method:</label>
+                            <select name="auth_method" class="form-control">
+                                <option value>none</option>
+                                <option value="basic">basic</option>
+                                <option value="digest">digest</option>
+                                <option value="ntlm">ntlm</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="col-xs-12 col-md-6">
                         <div class="form-group">
