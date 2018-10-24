@@ -8,6 +8,8 @@ There are lite and full versions of SPARQL editor.
 To get lite version, just install bower packages:  
 ```
 $ bower install
+$ npm instal
+$ npm run devbuild
 ```
 Then, you should open in your browser file: public/index.html
 
